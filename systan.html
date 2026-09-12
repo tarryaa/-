@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>システム英単語</title>
+<link rel="manifest" href="manifest-sys.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="シス単">
+<meta name="theme-color" content="#0b0d10">
+<link rel="apple-touch-icon" href="icon-sys-180.png">
+<link rel="icon" href="icon-sys-180.png">
+<script>(function(){try{var t=localStorage.getItem('sys.theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--muted:#6b7683;--border:#e3e7ec;--accent:#059669;--accent-soft:#e7f7f0;--mark:#fff2a8;--star:#eab308;--miss:#dc2626;--idiom-bg:#e8f0ff;--idiom-fg:#1d4ed8;--kobun-bg:#fff2e0;--kobun-fg:#b45309;--num-bg:#eef1f5;--num-fg:#475569;--shin-bg:#dcfce7;--shin-fg:#15803d;}
+:root[data-theme="dark"]{--bg:#0b0d10;--panel:#14181d;--text:#e6ebf2;--muted:#9aa6b4;--border:#262c34;--accent:#34d399;--accent-soft:#12281f;--mark:#5c5015;--star:#fbbf24;--miss:#f87171;--idiom-bg:#16263f;--idiom-fg:#8fbcff;--kobun-bg:#33260f;--kobun-fg:#f0b968;--num-bg:#222c38;--num-fg:#aab6c4;--shin-bg:#14331f;--shin-fg:#6ee7a0;}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; height:100%; overscroll-behavior-y:none}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Segoe UI",sans-serif;
+  background:var(--bg); color:var(--text); display:flex; flex-direction:column; height:100dvh;
+  -webkit-text-size-adjust:100%}
+header{background:var(--panel); border-bottom:1px solid var(--border); z-index:5;
+  padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+  padding-left:calc(12px + env(safe-area-inset-left)); padding-right:calc(12px + env(safe-area-inset-right))}
+.top{display:flex; align-items:center; gap:8px}
+h1{font-size:17px; margin:0; white-space:nowrap}
+.sub{font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.spacer{flex:1}
+.ib{border:1.5px solid var(--border); background:var(--panel); color:var(--text);
+  width:38px; height:36px; border-radius:10px; font-size:16px; line-height:1; flex:none}
+.searchwrap{position:relative; margin-top:8px}
+#q{width:100%; font-size:16px; padding:11px 38px 11px 36px; border:1.5px solid var(--border);
+  border-radius:11px; background:var(--bg); color:var(--text); outline:none; -webkit-appearance:none}
+#q:focus{border-color:var(--accent); background:var(--panel)}
+.ico{position:absolute; top:50%; left:12px; transform:translateY(-50%); color:var(--muted); font-size:15px}
+#clear{position:absolute; top:50%; right:5px; transform:translateY(-50%); border:none; background:transparent;
+  color:var(--muted); font-size:20px; width:32px; height:32px; border-radius:50%; display:none}
+.chips{display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding-bottom:2px;
+  scrollbar-width:none; -webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:1.5px solid var(--border); background:var(--panel); color:var(--muted); flex:none;
+  padding:7px 13px; border-radius:20px; font-size:13px; font-weight:600; white-space:nowrap}
+.chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
+#markbtn.active{background:var(--star); border-color:var(--star); color:#3a2c00}
+select.chip{padding:7px 10px; max-width:150px; -webkit-appearance:none; text-align:center}
+.statusline{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:12px; color:var(--muted)}
+.statusline b{color:var(--text)}
+main{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:8px 10px calc(24px + env(safe-area-inset-bottom));
+  padding-left:calc(10px + env(safe-area-inset-left)); padding-right:calc(10px + env(safe-area-inset-right))}
+.card{background:var(--panel); border:1px solid var(--border); border-radius:10px;
+  padding:4px 8px 4px 10px; margin-bottom:6px}
+.r1{display:flex; align-items:center; gap:6px; min-height:26px}
+.r2{display:flex; align-items:center; gap:6px; min-height:28px}
+.badge{font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:5px; white-space:nowrap; flex:none}
+.badge.熟語{background:var(--idiom-bg); color:var(--idiom-fg)}
+.badge.構文{background:var(--kobun-bg); color:var(--kobun-fg)}
+.badge.num{background:var(--num-bg); color:var(--num-fg)}
+.shin{font-size:9.5px; font-weight:700; padding:0 5px; border-radius:4px; flex:none;
+  background:var(--shin-bg); color:var(--shin-fg)}
+.gdots{display:flex; gap:2px; flex:none}
+.gdot{width:7px; height:7px; border-radius:50%; display:inline-block}
+.star{border:none; background:transparent; color:var(--muted); font-size:19px; width:30px; height:26px;
+  margin:0 -4px 0 0; line-height:1; flex:none}
+.star.on{color:var(--star)}
+.en{font-size:15.5px; font-weight:700; line-height:1.2; flex:1; min-width:0; word-break:break-word}
+.jp{font-size:12.5px; color:var(--text); line-height:1.3; flex:1; min-width:0; word-break:break-word}
+.ms{display:inline-flex; align-items:center; gap:4px; flex:none}
+.ms button{border:1px solid var(--border); background:var(--panel); color:var(--muted);
+  height:26px; min-width:30px; border-radius:7px; font-size:14px; line-height:1; padding:0}
+.ms button:disabled{opacity:.3}
+.ms .cnt{min-width:32px; font-weight:700; font-size:13.5px}
+.ms .cnt.has{color:var(--miss); border-color:var(--miss)}
+.gp{border:1px solid var(--border); background:var(--panel); color:var(--muted); flex:none;
+  height:26px; padding:0 9px; border-radius:7px; font-size:12px}
+mark{background:var(--mark); color:inherit; border-radius:3px; padding:0 1px}
+.empty{text-align:center; color:var(--muted); padding:50px 20px; font-size:15px; line-height:1.7}
+.sent{height:1px}
+/* ---- シート（ダイアログ） ---- */
+.ovl{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:50; align-items:flex-end}
+.ovl.open{display:flex}
+.sheet{background:var(--panel); width:100%; max-height:88dvh; border-radius:16px 16px 0 0;
+  display:flex; flex-direction:column; padding-bottom:env(safe-area-inset-bottom)}
+.sh-h{display:flex; align-items:flex-start; gap:10px; padding:14px 16px 10px; border-bottom:1px solid var(--border)}
+.sh-h .tt{flex:1; min-width:0}
+.sh-t{font-size:16px; font-weight:700; display:block; word-break:break-word}
+.sh-s{font-size:12px; color:var(--muted); display:block; margin-top:3px}
+.sh-x{border:none; background:transparent; color:var(--muted); font-size:24px; width:36px; height:36px;
+  border-radius:9px; flex:none}
+.sh-b{padding:12px 16px 16px; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch}
+.mi{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:14px 4px;
+  border:none; border-bottom:1px solid var(--border); background:transparent; color:var(--text); font-size:15px}
+.gchk{display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid var(--border); font-size:15px}
+.gchk input{width:20px; height:20px}
+.gcount{margin-left:auto; color:var(--muted); font-size:12px}
+.gm-row{display:flex; align-items:center; gap:7px; padding:9px 0; border-bottom:1px solid var(--border)}
+.gm-row input[type=text]{flex:1; min-width:0; background:var(--bg); border:1px solid var(--border);
+  color:var(--text); border-radius:8px; padding:8px; font-size:16px}
+.gm-colors{display:flex; gap:3px; flex-wrap:wrap; width:74px}
+.gm-c{width:16px; height:16px; border-radius:50%; border:2px solid transparent}
+.gm-c.on{border-color:var(--text)}
+.gbar{display:flex; gap:6px; align-items:center; padding:9px 0; border-bottom:1px solid var(--border)}
+.gbar .nm{flex:1; min-width:0; display:flex; align-items:center; gap:7px; font-size:14px}
+.gbtn{border:1px solid var(--border); background:var(--panel); color:var(--muted);
+  padding:7px 12px; border-radius:8px; font-size:13px; white-space:nowrap}
+.dl-x{border:none; background:transparent; color:var(--muted); font-size:18px; width:34px; height:34px; border-radius:8px}
+.sh-act{position:sticky; bottom:0; background:var(--panel); padding:10px 0 2px;
+  border-top:1px solid var(--border); margin-top:10px}
+.sh-act input[type=text]{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:9px; padding:11px; font-size:16px; margin-bottom:8px}
+.big{width:100%; border:1.5px solid var(--accent); background:transparent; color:var(--accent);
+  padding:12px; border-radius:10px; font-size:15px; font-weight:700}
+.big.solid{background:var(--accent); color:#fff}
+.big.warn{border-color:var(--miss); color:var(--miss)}
+.ghead{position:sticky; top:-12px; background:var(--panel); padding-top:12px; margin-top:-12px; z-index:1}
+.gfil{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:9px; padding:9px; font-size:16px; margin-bottom:8px}
+.hist{list-style:none; margin:0; padding:0}
+.hist li{display:flex; align-items:center; gap:8px; padding:10px 2px; border-bottom:1px solid var(--border); font-size:14px}
+.hist li span{flex:1}
+textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:10px; padding:10px; font-size:16px; font-family:ui-monospace,Menlo,monospace}
+.note{font-size:12.5px; color:var(--muted); line-height:1.75; margin:8px 0}
+.note code{background:var(--accent-soft); color:var(--accent); padding:1px 6px; border-radius:5px}
+.htab td{padding:3px 10px 3px 0; vertical-align:top; font-size:12.5px; line-height:1.7}
+.htab code{background:var(--accent-soft); color:var(--accent); padding:1px 6px; border-radius:5px; font-size:11.5px}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>システム英単語</h1>
+    <span class="sub" id="sub"></span>
+    <span class="spacer"></span>
+    <button class="ib" id="theme">🌙</button>
+    <button class="ib" id="menu">⋯</button>
+  </div>
+  <div class="searchwrap">
+    <span class="ico">🔍</span>
+    <input id="q" type="search" autocomplete="off" autocapitalize="none" placeholder="re- -tion / 5文字 / 間違いあり">
+    <button id="clear">×</button>
+  </div>
+  <div class="chips">
+    <button class="chip active" data-f="all">すべて</button><button class="chip" data-f="shin">新</button>
+    <button class="chip" id="markbtn">★のみ</button>
+    <button class="chip" id="andbtn">順不同 OFF</button>
+    <select class="chip" id="gsel"><option value="">組：全部</option></select>
+    <button class="chip" id="gbulk">一括</button>
+    <button class="chip" id="gmgr">組の管理</button>
+    <select class="chip" id="sort">
+      <option value="def">番号順</option>
+      <option value="missdesc">間違い多い順</option>
+      <option value="missasc">間違い少ない順</option>
+    </select>
+  </div>
+  <div class="statusline"><span id="count"></span></div>
+</header>
+<main id="main">
+  <div id="list"></div>
+  <div class="empty" id="empty" style="display:none">該当する項目がありません</div>
+</main>
+<div class="ovl" id="ovl">
+  <div class="sheet">
+    <div class="sh-h"><span class="tt"><span class="sh-t" id="sh-t"></span><span class="sh-s" id="sh-s"></span></span>
+      <button class="sh-x" id="sh-x">×</button></div>
+    <div class="sh-b" id="sh-b"></div>
+  </div>
+</div>
+<script>
+var NS='sys', KIND='sys', TITLE='システム英単語', IS_SOKU=false, IMPORTNAME='sys-backup.json';
+
+function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+function normWord(w){return w.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g,'').toLowerCase();}
+
+/* 末尾/先頭の飾り（～ ... （…） 〔…〕 句読点）を段階的に外した候補を作る */
+function variants(s){
+  var out=[], seen={}, t=String(s).trim();
+  function push(x){ x=x.trim(); if(x && !seen[x]){ seen[x]=1; out.push(x.toLowerCase()); } }
+  push(t);
+  var cur=t;
+  for(var k=0;k<8;k++){
+    var n=cur;
+    n=n.replace(/\s*[〔【\[][^〕】\]]*[〕】\]]\s*$/,'');
+    n=n.replace(/\s*[（(][^）)]*[)）]\s*$/,'');
+    n=n.replace(/[\s,、，]*\.\.\.$/,'');
+    n=n.replace(/[\s,、，]*[～~]$/,'');
+    n=n.replace(/[\s.,、，;；:：?？!！]+$/,'');
+    n=n.trim();
+    if(n===cur) break;
+    cur=n; push(cur);
+  }
+  var lead=[];
+  for(var i=0;i<out.length;i++){
+    var L=out[i].replace(/^[\s～~,、，]+/,'').trim();
+    if(L && L!==out[i]) lead.push(L);
+  }
+  for(var j=0;j<lead.length;j++) push(lead[j]);
+  return out;
+}
+
+var QUOTE_RE=/^["'\u201C\u201D\u300C\u300E\u2018\u2019](.+)["'\u201C\u201D\u300D\u300F\u2018\u2019]$/;
+var LEN_RE=/^([0-9]+)(?:[-~\u301C\uFF5E]([0-9]+))?(?:文字|字)$/;
+var WC_RE=/^([0-9]+)(?:[-~\u301C\uFF5E]([0-9]+))?語$/;
+var NRANGE_RE=/^([0-9]+)[-~\u301C\uFF5E]([0-9]+)$/;
+var NLE_RE=/^([0-9]+)(?:以下|まで)$/;
+var NGE_RE=/^([0-9]+)(?:以上|から)$/;
+var MISS_RE=/^(?:間違い|間違え|まちがい|ミス|✗|×)\s*([0-9]+)(?:[-~\u301C\uFF5E]([0-9]+))?(以上|以下)?$/;
+var MISSANY_RE=/^(?:間違い|間違え|まちがい|ミス|✗|×)\s*(あり|なし)$/;
+var INF=1e9;
+
+function classify(t){
+  var m;
+  if((m=t.match(MISSANY_RE))) return m[1]==='あり' ? {k:'miss',a:1,b:INF} : {k:'miss',a:0,b:0};
+  if((m=t.match(MISS_RE))){
+    var a=+m[1];
+    if(m[2]) return {k:'miss', a:a, b:+m[2]};
+    if(m[3]==='以上') return {k:'miss', a:a, b:INF};
+    if(m[3]==='以下') return {k:'miss', a:0, b:a};
+    return {k:'miss', a:a, b:a};
+  }
+  if((m=t.match(NRANGE_RE))) return {k:'nrange', a:+m[1], b:+m[2]};
+  if((m=t.match(NLE_RE)))    return {k:'nrange', a:0,     b:+m[1]};
+  if((m=t.match(NGE_RE)))    return {k:'nrange', a:+m[1], b:INF};
+  if((m=t.match(LEN_RE)))    return {k:'len', a:+m[1], b:m[2]?+m[2]:+m[1]};
+  if((m=t.match(WC_RE)))     return {k:'wc',  a:+m[1], b:m[2]?+m[2]:+m[1]};
+  if((m=t.match(QUOTE_RE)))  return {k:'word', v:m[1].trim().toLowerCase()};
+  if(t.length>1 && t.charAt(t.length-1)==='-') return {k:'pre', v:t.slice(0,-1).toLowerCase()};
+  if(t.length>1 && t.charAt(0)==='-')          return {k:'suf', v:t.slice(1).toLowerCase()};
+  return null;
+}
+
+function parseQuery(raw, andMode){
+  var toks=raw.split(/\s+/).filter(Boolean);
+  if(!toks.length) return {type:'empty'};
+  if(toks.length===1 && /^[0-9]+$/.test(toks[0])) return {type:'num', n:parseInt(toks[0],10)};
+  var cls=toks.map(classify);
+  var hasSpecial=cls.some(function(c){return !!c;});
+  var hasNum=toks.some(function(t){return /^[0-9]+$/.test(t);});
+  if(!hasSpecial && hasNum && toks.length>=2) return {type:'pos', toks:toks};
+
+  var terms=[], pending=[];
+  function flush(){
+    if(!pending.length) return;
+    if(andMode){ for(var i=0;i<pending.length;i++) terms.push({k:'has', v:pending[i].toLowerCase()}); }
+    else terms.push({k:'has', v:pending.join(' ').toLowerCase()});
+    pending=[];
+  }
+  for(var i=0;i<toks.length;i++){
+    var c=cls[i];
+    if(!c){ pending.push(toks[i]); continue; }
+    if(c.k==='pre'){
+      var v=(pending.length? pending.join(' ')+' '+c.v : c.v).toLowerCase();
+      pending=[]; terms.push({k:'pre', v:v}); continue;
+    }
+    if(c.k==='suf'){
+      flush();
+      var parts=[c.v];
+      while(i+1<toks.length && !cls[i+1] && !/^[0-9]+$/.test(toks[i+1])) parts.push(toks[++i].toLowerCase());
+      terms.push({k:'suf', v:parts.join(' ')}); continue;
+    }
+    flush(); terms.push(c);
+  }
+  flush();
+  return {type:'terms', terms:terms};
+}
+
+function anyStarts(list, v){ for(var i=0;i<list.length;i++) if(list[i].lastIndexOf(v,0)===0) return true; return false; }
+function anyEnds(list, v){
+  for(var i=0;i<list.length;i++){ var s=list[i];
+    if(s.length>=v.length && s.indexOf(v, s.length-v.length)===s.length-v.length) return true; }
+  return false;
+}
+
+function matchEntry(r, raw, andMode){
+  var q=parseQuery(raw, andMode);
+  if(q.type==='empty') return {ok:true, needles:[]};
+  if(q.type==='num')   return {ok:(r.no===q.n), needles:[]};
+  if(q.type==='pos'){
+    var w=r._w;
+    if(w.length<q.toks.length) return {ok:false, needles:[]};
+    var need=[];
+    for(var i=0;i<q.toks.length;i++){
+      if(/^[0-9]+$/.test(q.toks[i])) continue;
+      if(w[i]!==q.toks[i].toLowerCase()) return {ok:false, needles:[]};
+      need.push(q.toks[i]);
+    }
+    return {ok:true, needles:need};
+  }
+  var needles=[], T=q.terms;
+  for(var j=0;j<T.length;j++){
+    var t=T[j];
+    if(t.k==='len'){ if(r._len<t.a||r._len>t.b) return {ok:false,needles:[]}; continue; }
+    if(t.k==='wc'){  if(r._wc <t.a||r._wc >t.b) return {ok:false,needles:[]}; continue; }
+    if(t.k==='nrange'){ if(r.no<t.a||r.no>t.b) return {ok:false,needles:[]}; continue; }
+    if(t.k==='miss'){ var mc=r._miss||0; if(mc<t.a||mc>t.b) return {ok:false,needles:[]}; continue; }
+    if(t.k==='word'){ if(r._w.indexOf(t.v)<0) return {ok:false,needles:[]}; needles.push(t.v); continue; }
+    if(t.k==='pre'){
+      if(!(anyStarts(r._v,t.v) || r._jp.lastIndexOf(t.v,0)===0)) return {ok:false,needles:[]};
+      needles.push(t.v); continue;
+    }
+    if(t.k==='suf'){
+      if(!(anyEnds(r._v,t.v) || anyEnds([r._jp],t.v))) return {ok:false,needles:[]};
+      needles.push(t.v); continue;
+    }
+    if(t.k==='has'){
+      if(r._en.indexOf(t.v)<0 && r._jp.indexOf(t.v)<0) return {ok:false,needles:[]};
+      needles.push(t.v); continue;
+    }
+  }
+  return {ok:true, needles:needles};
+}
+
+function hlMulti(text, needles){
+  var arr=[]; for(var i=0;i<needles.length;i++) if(needles[i]) arr.push(escRe(needles[i]));
+  if(!arr.length) return esc(text);
+  arr.sort(function(a,b){return b.length-a.length;});
+  var re; try{ re=new RegExp('('+arr.join('|')+')','gi'); }catch(e){ return esc(text); }
+  var out='', last=0, m;
+  while((m=re.exec(text))!==null){
+    out+=esc(text.slice(last,m.index))+'<mark>'+esc(m[0])+'</mark>';
+    last=m.index+m[0].length;
+    if(m[0].length===0) re.lastIndex++;
+  }
+  return out+esc(text.slice(last));
+}
+
+
+/* ================= 状態 ================= */
+var DATA=[], dsMeta=null;
+var marks={}, miss={}, groups=[], gm={};
+var filter='all', andMode=false, markOnly=false, sortMode='def', gFilter='';
+var GCOLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
+var filtered=[], rendered=0, CHUNK=120, gPickId=null, dlgId=null, gDlgFilter='', sheetMode='';
+
+function lsGet(k,d){ try{ var v=localStorage.getItem(NS+'.'+k); return v===null?d:v; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(NS+'.'+k,v); return true; }
+  catch(e){ alert('保存できませんでした。端末の空き容量をご確認ください。'); return false; } }
+
+var listEl=document.getElementById('list'), emptyEl=document.getElementById('empty'),
+    countEl=document.getElementById('count'), qEl=document.getElementById('q'),
+    clearBtn=document.getElementById('clear'), andBtn=document.getElementById('andbtn'),
+    markBtn=document.getElementById('markbtn'), themeBtn=document.getElementById('theme'),
+    menuBtn=document.getElementById('menu'), sortSel=document.getElementById('sort'),
+    gsel=document.getElementById('gsel'), gmgrBtn=document.getElementById('gmgr'),
+    gbulkBtn=document.getElementById('gbulk'), subEl=document.getElementById('sub'),
+    ovl=document.getElementById('ovl'), shT=document.getElementById('sh-t'),
+    shS=document.getElementById('sh-s'), shB=document.getElementById('sh-b');
+
+/* ================= 保存 ================= */
+function payload(){ var a=[]; for(var k in marks) if(marks[k]) a.push(String(k));
+  return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm}; }
+function persist(){
+  var p=payload();
+  lsSet('marks', JSON.stringify(p.marks)); lsSet('miss', JSON.stringify(p.miss));
+  lsSet('groups',JSON.stringify(p.groups)); lsSet('gm', JSON.stringify(p.gm));
+  lsSet('ts', String(p.ts));
+}
+function loadState(){
+  try{ (JSON.parse(lsGet('marks','[]'))||[]).forEach(function(id){ marks[String(id)]=1; }); }catch(e){}
+  try{ miss=JSON.parse(lsGet('miss','{}'))||{}; }catch(e){ miss={}; }
+  try{ groups=JSON.parse(lsGet('groups','[]'))||[]; }catch(e){ groups=[]; }
+  try{ gm=JSON.parse(lsGet('gm','{}'))||{}; }catch(e){ gm={}; }
+}
+function prep(rows){
+  DATA=rows;
+  DATA.forEach(function(r,i){
+    r._i=i; r._en=String(r.en).toLowerCase(); r._jp=String(r.jp).toLowerCase();
+    r._w=String(r.en).split(/\s+/).map(normWord);
+    r._v=variants(r.en);
+    r._len=(String(r.en).match(/[A-Za-z]/g)||[]).length;
+    r._wc=r._w.filter(function(x){return x.length>0;}).length;
+    r._miss=(miss[r.id]||[]).length;
+  });
+  BYID={}; DATA.forEach(function(r){ BYID[r.id]=r; });
+}
+var BYID={};
+function syncMiss(){ DATA.forEach(function(r){ r._miss=(miss[r.id]||[]).length; }); }
+
+/* ================= グループ ================= */
+function gById(id){ for(var i=0;i<groups.length;i++) if(groups[i].id===id) return groups[i]; return null; }
+function newGid(){ return 'g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function entryGroups(id){ return gm[id]||[]; }
+function groupCount(gid){ var c=0,k; for(k in gm) if((gm[k]||[]).indexOf(gid)>=0) c++; return c; }
+function gColor(g){ return GCOLORS[(g&&g.c)||0]; }
+function addToGroup(e,g){ var a=gm[e]||(gm[e]=[]); if(a.indexOf(g)<0) a.push(g); }
+function removeFromGroup(e,g){ var a=gm[e]; if(!a) return; var i=a.indexOf(g); if(i>=0) a.splice(i,1);
+  if(!a.length) delete gm[e]; }
+function createGroup(n){ n=String(n||'').trim(); if(!n) return null;
+  var g={id:newGid(), name:n, c:groups.length%GCOLORS.length}; groups.push(g); return g; }
+function refreshGroupSel(){
+  var cur=gFilter, h='<option value="">組：全部</option><option value="__none__">組なし</option>';
+  for(var i=0;i<groups.length;i++) h+='<option value="'+groups[i].id+'">'+esc(groups[i].name)+'（'+groupCount(groups[i].id)+'）</option>';
+  gsel.innerHTML=h; gsel.value=cur; if(gsel.value!==cur){ gFilter=''; gsel.value=''; }
+}
+
+/* ================= 表示 ================= */
+function pad(n){ return n<10?('0'+n):(''+n); }
+function fmtDate(ts){ var d=new Date(ts), w='日月火水木金土'.charAt(d.getDay());
+  return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+'（'+w+'） '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+
+function card(r, needles){
+  var on=!!marks[r.id], c=r._miss||0, a=entryGroups(r.id), dots='';
+  for(var i=0;i<a.length && i<4;i++){ var g=gById(a[i]); if(g) dots+='<span class="gdot" style="background:'+gColor(g)+'"></span>'; }
+  var badge = IS_SOKU
+      ? '<span class="badge '+r.t+'">'+r.t+' '+r.no+'</span>'
+      : '<span class="badge num">'+r.no+'</span>'+(r.s?'<span class="shin">新</span>':'');
+  return '<div class="card" data-id="'+r.id+'">'
+   + '<div class="r1">'+badge+'<span class="gdots">'+dots+'</span>'
+   + '<span class="en">'+hlMulti(r.en,needles)+'</span>'
+   + '<button class="star'+(on?' on':'')+'" data-act="star">'+(on?'★':'☆')+'</button></div>'
+   + '<div class="r2"><span class="jp">'+hlMulti(r.jp,needles)+'</span>'
+   + '<span class="ms">'
+   + '<button data-act="dec"'+(c?'':' disabled')+'>−</button>'
+   + '<button class="cnt'+(c?' has':'')+'" data-act="hist">'+c+'</button>'
+   + '<button data-act="inc">＋</button></span>'
+   + '<button class="gp" data-act="grp">組'+(a.length? ' '+a.length : '')+'</button></div></div>';
+}
+
+function sortedList(){
+  if(sortMode==='def') return DATA;
+  var a=DATA.slice();
+  a.sort(function(x,y){ var d=(y._miss||0)-(x._miss||0); if(sortMode==='missasc') d=-d; return d||(x._i-y._i); });
+  return a;
+}
+function passFilter(r){
+  if(IS_SOKU) return filter==='all' || r.t===filter;
+  return filter==='all' || (filter==='shin' && r.s===1);
+}
+function render(){
+  var raw=qEl.value.trim();
+  clearBtn.style.display=raw?'block':'none';
+  var list=sortedList(), total=0;
+  filtered=[];
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    if(markOnly && !marks[r.id]) continue;
+    if(gFilter==='__none__'){ if((gm[r.id]||[]).length) continue; }
+    else if(gFilter){ if((gm[r.id]||[]).indexOf(gFilter)<0) continue; }
+    if(!passFilter(r)) continue;
+    total++;
+    var res=matchEntry(r, raw, andMode);
+    if(!res.ok) continue;
+    r._nd=res.needles;
+    filtered.push(r);
+  }
+  countEl.innerHTML='<b>'+filtered.length+'</b> / '+total+' 件';
+  listEl.innerHTML=''; rendered=0;
+  emptyEl.style.display=filtered.length?'none':'block';
+  more();
+}
+function more(){
+  if(rendered>=filtered.length) return;
+  var end=Math.min(rendered+CHUNK, filtered.length), h='';
+  for(var i=rendered;i<end;i++) h+=card(filtered[i], filtered[i]._nd||[]);
+  listEl.insertAdjacentHTML('beforeend', h);
+  rendered=end;
+}
+document.getElementById('main').addEventListener('scroll', function(e){
+  var el=e.target;
+  if(el.scrollTop+el.clientHeight > el.scrollHeight-600) more();
+});
+
+/* ================= シート ================= */
+function openSheet(){ ovl.classList.add('open'); }
+function closeSheet(){ ovl.classList.remove('open'); gPickId=null; dlgId=null; sheetMode=''; }
+document.getElementById('sh-x').addEventListener('click', closeSheet);
+ovl.addEventListener('click', function(e){ if(e.target===ovl) closeSheet(); });
+
+function afterChange(){ persist(); refreshGroupSel(); render(); }
+
+/* --- 間違いの履歴 --- */
+function openHist(id){
+  sheetMode='hist'; dlgId=id;
+  var r=BYID[id], a=(miss[id]||[]).slice();
+  shT.textContent=r.en; shS.textContent=r.jp;
+  var h='<div class="note">これまでに <b style="color:var(--miss);font-size:16px">'+a.length+'</b> 回 間違えています</div>';
+  if(!a.length) h+='<div class="note">まだ記録はありません</div>';
+  else{ h+='<ul class="hist">';
+    for(var i=a.length-1;i>=0;i--) h+='<li><span>'+fmtDate(a[i])+'</span><button class="dl-x" data-hx="'+i+'">×</button></li>';
+    h+='</ul>'; }
+  h+='<div class="sh-act"><button class="big warn" data-hplus="1">＋ 今 間違えた</button></div>';
+  shB.innerHTML=h; openSheet();
+}
+/* --- グループ選択 --- */
+function gFilterBox(){
+  if(groups.length<8) return '';
+  return '<div class="ghead"><input class="gfil" id="gfil" type="text" placeholder="グループ名でしぼりこみ（全'+groups.length+'個）" value="'+esc(gDlgFilter).replace(/"/g,'&quot;')+'"></div>';
+}
+function applyGFilter(){
+  var f=gDlgFilter.trim().toLowerCase(), rows=shB.querySelectorAll('[data-gn]');
+  for(var i=0;i<rows.length;i++){ var nm=rows[i].getAttribute('data-gn')||'';
+    rows[i].style.display=(!f||nm.indexOf(f)>=0)?'':'none'; }
+}
+function openGroupPicker(id){
+  sheetMode='pick'; gPickId=id;
+  var r=BYID[id]; if(!r) return;
+  shT.textContent=r.en; shS.textContent='グループに入れる（複数OK）';
+  var mine=entryGroups(id), h=gFilterBox();
+  if(!groups.length) h+='<div class="note">まだグループがありません。下で作れます。</div>';
+  for(var i=0;i<groups.length;i++){ var g=groups[i];
+    h+='<label class="gchk" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'">'
+     + '<input type="checkbox" data-gid="'+g.id+'"'+(mine.indexOf(g.id)>=0?' checked':'')+'>'
+     + '<span class="gdot" style="background:'+gColor(g)+'"></span><span>'+esc(g.name)+'</span>'
+     + '<span class="gcount">'+groupCount(g.id)+'</span></label>';
+  }
+  h+='<div class="sh-act"><input id="gnew" type="text" placeholder="新しいグループ名（例：re系）">'
+   + '<button class="big" data-gadd="pick">＋ 作ってここに入れる</button></div>';
+  shB.innerHTML=h; openSheet(); applyGFilter();
+}
+function openGroupManager(){
+  sheetMode='mgr'; gPickId=null;
+  shT.textContent='グループの管理'; shS.textContent=groups.length+' 個';
+  var h=gFilterBox();
+  if(!groups.length) h+='<div class="note">まだグループがありません</div>';
+  for(var i=0;i<groups.length;i++){ var g=groups[i];
+    h+='<div class="gm-row" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'">'
+     + '<input type="text" data-gname="'+g.id+'" value="'+esc(g.name).replace(/"/g,'&quot;')+'">'
+     + '<span class="gm-colors" data-gcol="'+g.id+'">';
+    for(var c=0;c<GCOLORS.length;c++)
+      h+='<span class="gm-c'+(((g.c||0)===c)?' on':'')+'" data-c="'+c+'" style="background:'+GCOLORS[c]+'"></span>';
+    h+='</span><span class="gcount">'+groupCount(g.id)+'</span><button class="dl-x" data-gdel="'+g.id+'">×</button></div>';
+  }
+  h+='<div class="sh-act"><input id="gnew2" type="text" placeholder="新しいグループ名">'
+   + '<button class="big" data-gadd="mgr">＋ グループを作る</button></div>';
+  shB.innerHTML=h; openSheet(); applyGFilter();
+}
+function openBulk(){
+  sheetMode='bulk'; gPickId=null;
+  shT.textContent='表示中の '+filtered.length+' 件をまとめて';
+  shS.textContent=(qEl.value.trim()? '検索：'+qEl.value.trim() : '（絞り込みなし）');
+  var h=gFilterBox();
+  if(!filtered.length) h+='<div class="note">表示中の項目がありません</div>';
+  else if(!groups.length) h+='<div class="note">まだグループがありません。下で作れます。</div>';
+  for(var i=0;i<groups.length;i++){ var g=groups[i];
+    h+='<div class="gbar" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'"><span class="nm">'
+     + '<span class="gdot" style="background:'+gColor(g)+'"></span>'+esc(g.name)
+     + '<span class="gcount">'+groupCount(g.id)+'</span></span>'
+     + '<button class="gbtn" data-badd="'+g.id+'">追加</button>'
+     + '<button class="gbtn" data-brem="'+g.id+'">外す</button></div>';
+  }
+  h+='<div class="sh-act"><input id="gnew3" type="text" placeholder="新しいグループ名">'
+   + '<button class="big" data-gadd="bulk">＋ 作って表示中を全部入れる</button></div>';
+  shB.innerHTML=h; openSheet(); applyGFilter();
+}
+/* --- メニュー --- */
+function openMenu(){
+  sheetMode='menu';
+  shT.textContent='メニュー'; shS.textContent=(dsMeta? dsMeta.title+'：'+DATA.length+'件 取り込み済み':'データ未取り込み');
+  var st=missTotal();
+  shB.innerHTML=
+     '<button class="mi" data-m="help">📖 <span>検索のコツ</span></button>'
+   + '<button class="mi" data-m="import">📥 <span>単語データを取り込む</span></button>'
+   + '<button class="mi" data-m="export">💾 <span>バックアップを書き出す</span></button>'
+   + '<button class="mi" data-m="restore">📂 <span>バックアップから戻す</span></button>'
+   + '<button class="mi" data-m="clearmark">☆ <span>マークを全部外す（'+markCount()+'）</span></button>'
+   + '<button class="mi" data-m="clearmiss">✗ <span>間違いの記録を全部消す（'+st+'回）</span></button>'
+   + '<div class="note">記録は端末の中に保存されます。<b>ときどきバックアップを書き出して</b>おくと安心です。</div>';
+  openSheet();
+}
+function markCount(){ var c=0; for(var k in marks) if(marks[k]) c++; return c; }
+function missTotal(){ var c=0,k; for(k in miss) c+=(miss[k]||[]).length; return c; }
+
+function openHelp(){
+  sheetMode='help'; shT.textContent='検索のコツ'; shS.textContent='検索ボックスに打つだけ';
+  var rows = IS_SOKU
+   ? [['get','get を含む'],['be-','be で始まる'],['-for','for で終わる（末尾の～は無視）'],
+      ['be- -for','be で始まり for で終わる'],['be- late','be で始まり late を含む'],
+      ['"all"','all という語そのもの（call は除外）'],['1 in','2番目の語が in'],
+      ['be 2 in','1番目 be・3番目 in'],['5文字','アルファベット5文字'],['3語','3語でできた熟語'],
+      ['300以下','番号300以下'],['600~1100','番号600〜1100'],
+      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],['反','意味に「反」を含む']]
+   : [['get','get を含む'],['re-','re で始まる'],['-tion','tion で終わる'],
+      ['re- -tion','re で始まり tion で終わる'],['5文字','5文字の単語'],['5文字 re-','5文字で re で始まる'],
+      ['"all"','all という語そのもの'],['300以下','番号300以下'],['600~1100','番号600〜1100'],
+      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],['反','意味に「反」を含む']];
+  var h='<table class="htab">';
+  for(var i=0;i<rows.length;i++) h+='<tr><td><code>'+esc(rows[i][0])+'</code></td><td>'+esc(rows[i][1])+'</td></tr>';
+  h+='</table><div class="note"><b>順不同</b>をONにすると <code>be in</code> で「be と in を両方含む」（順序自由）。<br>'
+   + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。</div>';
+  shB.innerHTML=h; openSheet();
+}
+
+/* --- 取り込み --- */
+function openImport(){
+  sheetMode='import';
+  shT.textContent='単語データを取り込む'; shS.textContent=TITLE;
+  shB.innerHTML=
+     '<div class="note">パソコンで書き出した <code>'+IMPORTNAME+'</code> を選ぶのが簡単です。</div>'
+   + '<button class="big solid" data-m="pickfile">📂 ファイルを選ぶ</button>'
+   + '<input type="file" id="impfile" accept=".json,.txt,.csv,.tsv" style="display:none">'
+   + '<div class="note" style="margin-top:16px">または、スプレッドシートをコピーして貼り付け：<br>'
+   + (IS_SOKU ? '<code>連番 / 熟語番号 / 構文番号 / 熟語 / 意味</code>' : '<code>新 / 番号 / 単語 / 意味</code>')
+   + ' の順</div>'
+   + '<textarea id="pastebox" placeholder="ここに貼り付け"></textarea>'
+   + '<div class="sh-act"><button class="big" data-m="dopaste">貼り付けた内容を取り込む</button></div>';
+  openSheet();
+}
+function splitLine(line){
+  if(line.indexOf('\t')>=0) return line.split('\t');
+  var out=[],cur='',q=false;
+  for(var i=0;i<line.length;i++){ var ch=line[i];
+    if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+    else { if(ch==='"') q=true; else if(ch===','){ out.push(cur); cur=''; } else cur+=ch; } }
+  out.push(cur); return out;
+}
+function parsePaste(text){
+  var lines=String(text).split(/\r?\n/), rows=[], seen={};
+  for(var i=0;i<lines.length;i++){
+    var L=lines[i]; if(!L.trim()) continue;
+    var c=splitLine(L).map(function(x){ return String(x).trim(); });
+    if(IS_SOKU){
+      if(c.length<5) continue;
+      var renban=c[0], jn=c[1], kn=c[2], en=c[3], jp=c[4];
+      if(!/^[0-9]+$/.test(renban)) continue;
+      var t='', no=0;
+      if(/^[0-9]+$/.test(jn)){ t='熟語'; no=parseInt(jn,10); }
+      else if(/^[0-9]+$/.test(kn)){ t='構文'; no=parseInt(kn,10); }
+      else continue;
+      if(!en) continue;
+      var id=parseInt(renban,10); if(seen[id]) continue; seen[id]=1;
+      rows.push({id:id, n:id, t:t, no:no, en:en, jp:jp});
+    } else {
+      if(c.length<3) continue;
+      var mk,num,w,mn;
+      if(c.length>=4){ mk=c[0]; num=c[1]; w=c[2]; mn=c[3]; }
+      else { mk=''; num=c[0]; w=c[1]; mn=c[2]; }
+      if(!/^[0-9]+$/.test(num) || !w) continue;
+      var id2=parseInt(num,10); if(seen[id2]) continue; seen[id2]=1;
+      rows.push({id:id2, no:id2, en:w, jp:mn, s:(mk==='新')?1:0});
+    }
+  }
+  return rows;
+}
+function applyDataset(rows, meta, state){
+  if(!rows || !rows.length){ alert('データを読み取れませんでした。列の順番をご確認ください。'); return false; }
+  try{ lsSet('dataset', JSON.stringify({kind:KIND, title:TITLE, rows:rows})); }
+  catch(e){ alert('保存できませんでした'); return false; }
+  dsMeta={kind:KIND, title:TITLE};
+  if(state){
+    marks={}; (state.marks||[]).forEach(function(id){ marks[String(id)]=1; });
+    miss=state.miss||{}; groups=state.groups||[]; gm=state.gm||{};
+    persist();
+  }
+  prep(rows); syncMiss(); refreshGroupSel(); updateSub(); render();
+  return true;
+}
+function doExport(){
+  var d={app:'eigo', kind:KIND, title:TITLE, ts:Date.now(),
+         rows:DATA.map(function(r){ return IS_SOKU?{id:r.id,n:r.n,t:r.t,no:r.no,en:r.en,jp:r.jp}
+                                                  :{id:r.id,no:r.no,en:r.en,jp:r.jp,s:r.s}; }),
+         state:payload()};
+  var blob=new Blob([JSON.stringify(d)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=KIND+'-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
+}
+function handleFile(f, wantRows){
+  var rd=new FileReader();
+  rd.onload=function(){
+    var txt=String(rd.result), obj=null;
+    try{ var m=txt.match(/=\s*(\{[\s\S]*\})\s*;?\s*$/); obj=JSON.parse(m?m[1]:txt); }catch(e){ obj=null; }
+    if(obj && (obj.rows || obj.marks || obj.state)){
+      var st=obj.state||((obj.marks||obj.miss||obj.groups)?obj:null);
+      if(obj.kind && obj.kind!==KIND && !confirm('このファイルは「'+(obj.title||obj.kind)+'」用のようです。取り込みますか？')) return;
+      if(obj.rows && obj.rows.length){ if(applyDataset(obj.rows, obj, st)) alert('取り込みました。'+obj.rows.length+'件'); }
+      else if(st){ marks={}; (st.marks||[]).forEach(function(id){ marks[String(id)]=1; });
+        miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{};
+        persist(); syncMiss(); refreshGroupSel(); render();
+        alert('記録を戻しました。★'+markCount()+'件'); }
+      closeSheet(); return;
+    }
+    var rows=parsePaste(txt);
+    if(applyDataset(rows, null, null)){ alert('取り込みました。'+rows.length+'件'); closeSheet(); }
+  };
+  rd.readAsText(f);
+}
+
+/* ================= 操作 ================= */
+listEl.addEventListener('click', function(e){
+  var t=e.target; if(!t.getAttribute) return;
+  var act=t.getAttribute('data-act'); if(!act) return;
+  var cardEl=t; while(cardEl && !cardEl.getAttribute('data-id')) cardEl=cardEl.parentNode;
+  if(!cardEl) return;
+  var id=cardEl.getAttribute('data-id'), r=BYID[id];
+  if(act==='star'){
+    if(marks[id]) delete marks[id]; else marks[id]=1;
+    persist();
+    if(markOnly) render();
+    else { var on=!!marks[id]; t.textContent=on?'★':'☆'; t.classList.toggle('on',on); }
+    return;
+  }
+  if(act==='inc'||act==='dec'){
+    var a=miss[id]||(miss[id]=[]);
+    if(act==='inc') a.push(Date.now()); else { if(!a.length) return; a.pop(); }
+    if(!a.length) delete miss[id];
+    persist(); syncMiss();
+    if(sortMode!=='def' || /間違|まちがい|ミス|✗|×/.test(qEl.value)) render();
+    else {
+      var cnt=cardEl.querySelector('.cnt'), c=r._miss||0;
+      cnt.textContent=c; cnt.classList.toggle('has',c>0);
+      cardEl.querySelector('[data-act="dec"]').disabled=(c===0);
+    }
+    return;
+  }
+  if(act==='hist'){ openHist(id); return; }
+  if(act==='grp'){ openGroupPicker(id); return; }
+});
+
+shB.addEventListener('click', function(e){
+  var t=e.target; if(!t.getAttribute) return;
+  var v;
+  if((v=t.getAttribute('data-hx'))!==null && v!==undefined && dlgId){
+    var a=miss[dlgId]; if(!a) return;
+    a.splice(parseInt(v,10),1); if(!a.length) delete miss[dlgId];
+    persist(); syncMiss(); render(); openHist(dlgId); return;
+  }
+  if(t.getAttribute('data-hplus') && dlgId){
+    (miss[dlgId]||(miss[dlgId]=[])).push(Date.now());
+    persist(); syncMiss(); render(); openHist(dlgId); return;
+  }
+  if((v=t.getAttribute('data-gadd'))){
+    var box=document.getElementById(v==='pick'?'gnew':(v==='mgr'?'gnew2':'gnew3'));
+    var g=createGroup(box.value); if(!g) return;
+    if(v==='pick' && gPickId) addToGroup(gPickId, g.id);
+    if(v==='bulk') for(var i=0;i<filtered.length;i++) addToGroup(filtered[i].id, g.id);
+    var keep=gPickId; afterChange();
+    if(v==='pick') openGroupPicker(keep); else if(v==='mgr') openGroupManager(); else openBulk();
+    return;
+  }
+  if((v=t.getAttribute('data-badd'))){ for(var b=0;b<filtered.length;b++) addToGroup(filtered[b].id, v);
+    afterChange(); openBulk(); return; }
+  if((v=t.getAttribute('data-brem'))){ for(var c2=0;c2<filtered.length;c2++) removeFromGroup(filtered[c2].id, v);
+    afterChange(); openBulk(); return; }
+  if((v=t.getAttribute('data-gdel'))){
+    var gg=gById(v); if(!gg) return;
+    if(!confirm('グループ「'+gg.name+'」を消します。単語自体は消えません。')) return;
+    groups=groups.filter(function(x){ return x.id!==v; });
+    for(var k in gm) removeFromGroup(k, v);
+    afterChange(); openGroupManager(); return;
+  }
+  if(t.classList.contains('gm-c')){
+    var gc=gById(t.parentNode.getAttribute('data-gcol'));
+    if(gc){ gc.c=parseInt(t.getAttribute('data-c'),10)||0; afterChange(); openGroupManager(); }
+    return;
+  }
+  var m=t.getAttribute('data-m'); if(!m && t.parentNode.getAttribute) m=t.parentNode.getAttribute('data-m');
+  if(m==='help'){ openHelp(); return; }
+  if(m==='import'){ openImport(); return; }
+  if(m==='export'){ doExport(); return; }
+  if(m==='restore'){ openImport(); return; }
+  if(m==='pickfile'){ document.getElementById('impfile').click(); return; }
+  if(m==='dopaste'){
+    var rows=parsePaste(document.getElementById('pastebox').value);
+    if(applyDataset(rows,null,null)){ alert('取り込みました。'+rows.length+'件'); closeSheet(); }
+    return;
+  }
+  if(m==='clearmark'){ if(!markCount()) return;
+    if(confirm('マークを全部外します。よろしいですか？')){ marks={}; persist(); render(); closeSheet(); } return; }
+  if(m==='clearmiss'){ if(!missTotal()) return;
+    if(confirm('間違いの記録を全部消します。元に戻せません。')){ miss={}; persist(); syncMiss(); render(); closeSheet(); } return; }
+});
+shB.addEventListener('change', function(e){
+  var t=e.target;
+  if(t.id==='impfile'){ if(t.files&&t.files[0]) handleFile(t.files[0]); return; }
+  if(t.type==='checkbox' && t.getAttribute('data-gid') && gPickId){
+    var gid=t.getAttribute('data-gid');
+    if(t.checked) addToGroup(gPickId,gid); else removeFromGroup(gPickId,gid);
+    afterChange();
+    var lbl=t.parentNode.querySelector('.gcount'); if(lbl) lbl.textContent=groupCount(gid);
+  }
+});
+shB.addEventListener('input', function(e){
+  var t=e.target;
+  if(t.id==='gfil'){ gDlgFilter=t.value; applyGFilter(); return; }
+  var gid=t.getAttribute && t.getAttribute('data-gname');
+  if(gid){ var g=gById(gid); if(g){ g.name=t.value; persist(); refreshGroupSel();
+    var row=t.parentNode; if(row&&row.setAttribute) row.setAttribute('data-gn',String(t.value).toLowerCase()); } }
+});
+
+qEl.addEventListener('input', render);
+clearBtn.addEventListener('click', function(){ qEl.value=''; qEl.blur(); render(); });
+andBtn.addEventListener('click', function(){ andMode=!andMode; lsSet('andMode',andMode?'1':'0');
+  andBtn.textContent='順不同 '+(andMode?'ON':'OFF'); andBtn.classList.toggle('active',andMode); render(); });
+markBtn.addEventListener('click', function(){ markOnly=!markOnly;
+  markBtn.classList.toggle('active',markOnly); render(); });
+sortSel.addEventListener('change', function(){ sortMode=sortSel.value; lsSet('sort',sortMode); render(); });
+gsel.addEventListener('change', function(){ gFilter=gsel.value; render(); });
+gmgrBtn.addEventListener('click', openGroupManager);
+gbulkBtn.addEventListener('click', openBulk);
+menuBtn.addEventListener('click', openMenu);
+themeBtn.addEventListener('click', function(){
+  var nt=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',nt); lsSet('theme',nt);
+  themeBtn.textContent=nt==='dark'?'☀':'🌙';
+});
+document.querySelectorAll('.chips [data-f]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var a=document.querySelector('.chips [data-f].active'); if(a) a.classList.remove('active');
+    b.classList.add('active'); filter=b.getAttribute('data-f'); render();
+  });
+});
+
+function updateSub(){
+  if(!DATA.length){ subEl.textContent='データ未取り込み'; return; }
+  if(IS_SOKU){ var a=0,b=0; DATA.forEach(function(r){ r.t==='熟語'?a++:b++; });
+    subEl.textContent='熟語'+a+'・構文'+b; }
+  else { var s=0; DATA.forEach(function(r){ if(r.s) s++; });
+    subEl.textContent='全'+DATA.length+'語・新'+s; }
+}
+
+/* ================= 起動 ================= */
+(function boot(){
+  loadState();
+  andMode=lsGet('andMode','0')==='1';
+  andBtn.textContent='順不同 '+(andMode?'ON':'OFF'); andBtn.classList.toggle('active',andMode);
+  sortMode=lsGet('sort','def'); sortSel.value=sortMode;
+  themeBtn.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀':'🌙';
+  var raw=lsGet('dataset','');
+  if(raw){ try{ var ds=JSON.parse(raw); dsMeta=ds; prep(ds.rows||[]); }catch(e){} }
+  refreshGroupSel(); updateSub();
+  if(!DATA.length){
+    emptyEl.innerHTML='まだ単語データがありません。<br><br>右上の <b>⋯</b> から<br><b>「単語データを取り込む」</b>を選んでください。';
+    emptyEl.style.display='block';
+    countEl.textContent='';
+    setTimeout(openImport, 400);
+  } else render();
+})();
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
