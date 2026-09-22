@@ -79,7 +79,8 @@ mark{background:var(--mark); color:inherit; border-radius:3px; padding:0 1px}
 .empty{text-align:center; color:var(--muted); padding:50px 20px; font-size:15px; line-height:1.7}
 .sent{height:1px}
 /* ---- シート（ダイアログ） ---- */
-.ovl{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:50; align-items:flex-end}
+.ovl{position:fixed; left:0; top:0; width:100%; height:100dvh; background:rgba(0,0,0,.5);
+  display:none; z-index:50; align-items:flex-end; touch-action:manipulation}
 .ovl.open{display:flex}
 .sheet{background:var(--panel); width:100%; max-height:88dvh; border-radius:16px 16px 0 0;
   display:flex; flex-direction:column; padding-bottom:env(safe-area-inset-bottom)}
@@ -92,8 +93,21 @@ mark{background:var(--mark); color:inherit; border-radius:3px; padding:0 1px}
 .sh-b{padding:12px 16px 16px; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch}
 .mi{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:14px 4px;
   border:none; border-bottom:1px solid var(--border); background:transparent; color:var(--text); font-size:15px}
-.gchk{display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid var(--border); font-size:15px}
-.gchk input{width:20px; height:20px}
+.gchk{display:flex; align-items:center; gap:10px; padding:13px 4px; border-bottom:1px solid var(--border);
+  font-size:15px; touch-action:manipulation}
+.gchk .cb{width:24px; height:24px; border:2px solid var(--border); border-radius:6px; flex:none;
+  display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:#fff}
+.gchk.on .cb{background:var(--accent); border-color:var(--accent)}
+.gchk .gnm{flex:1; min-width:0}
+.gpar{background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:7px;
+  padding:7px 5px; font-size:12px; max-width:92px; flex:none}
+.ed{border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:12px; background:var(--bg)}
+.edlab{font-size:11.5px; color:var(--muted); margin-bottom:5px}
+.ed textarea{width:100%; min-height:0; background:var(--panel); border:1px solid var(--border);
+  color:var(--text); border-radius:8px; padding:9px; font-size:16px; line-height:1.5;
+  resize:vertical; font-family:inherit}
+.edrow{display:flex; align-items:center; gap:8px; margin-top:8px}
+.edmsg{font-size:12px; color:var(--accent)}
 .gcount{margin-left:auto; color:var(--muted); font-size:12px}
 .gm-row{display:flex; align-items:center; gap:7px; padding:9px 0; border-bottom:1px solid var(--border)}
 .gm-row input[type=text]{flex:1; min-width:0; background:var(--bg); border:1px solid var(--border);
@@ -106,15 +120,19 @@ mark{background:var(--mark); color:inherit; border-radius:3px; padding:0 1px}
 .gbtn{border:1px solid var(--border); background:var(--panel); color:var(--muted);
   padding:7px 12px; border-radius:8px; font-size:13px; white-space:nowrap}
 .dl-x{border:none; background:transparent; color:var(--muted); font-size:18px; width:34px; height:34px; border-radius:8px}
-.sh-act{position:sticky; bottom:0; background:var(--panel); padding:10px 0 2px;
-  border-top:1px solid var(--border); margin-top:10px}
+.sh-b{flex:1; min-height:0}
+.sh-f{background:var(--panel); border-top:1px solid var(--border); padding:10px 16px 12px}
+.sh-f:empty{display:none}
+.sh-act{padding:0}
 .sh-act input[type=text]{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
   border-radius:9px; padding:11px; font-size:16px; margin-bottom:8px}
 .big{width:100%; border:1.5px solid var(--accent); background:transparent; color:var(--accent);
   padding:12px; border-radius:10px; font-size:15px; font-weight:700}
 .big.solid{background:var(--accent); color:#fff}
 .big.warn{border-color:var(--miss); color:var(--miss)}
-.ghead{position:sticky; top:-12px; background:var(--panel); padding-top:12px; margin-top:-12px; z-index:1}
+.sh-top{background:var(--panel); padding:10px 16px 0}
+.sh-top:empty{display:none}
+.ghead{padding:0; margin:0}
 .gfil{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
   border-radius:9px; padding:9px; font-size:16px; margin-bottom:8px}
 .hist{list-style:none; margin:0; padding:0}
@@ -151,7 +169,8 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <button class="chip" id="gbulk">一括</button>
     <button class="chip" id="gmgr">組の管理</button>
     <select class="chip" id="sort">
-      <option value="def">番号順</option>
+      <option value="def">番号↑</option>
+      <option value="numdesc">番号↓</option>
       <option value="missdesc">間違い多い順</option>
       <option value="missasc">間違い少ない順</option>
     </select>
@@ -166,7 +185,9 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
   <div class="sheet">
     <div class="sh-h"><span class="tt"><span class="sh-t" id="sh-t"></span><span class="sh-s" id="sh-s"></span></span>
       <button class="sh-x" id="sh-x">×</button></div>
+    <div class="sh-top" id="sh-top"></div>
     <div class="sh-b" id="sh-b"></div>
+    <div class="sh-f" id="sh-f"></div>
   </div>
 </div>
 <script>
@@ -331,7 +352,7 @@ function hlMulti(text, needles){
 
 /* ================= 状態 ================= */
 var DATA=[], dsMeta=null;
-var marks={}, miss={}, groups=[], gm={};
+var marks={}, miss={}, groups=[], gm={}, edits={}, GS=null;
 var filter='all', andMode=false, markOnly=false, sortMode='def', gFilter='';
 var GCOLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
 var filtered=[], rendered=0, CHUNK=120, gPickId=null, dlgId=null, gDlgFilter='', sheetMode='';
@@ -352,18 +373,20 @@ var listEl=document.getElementById('list'), emptyEl=document.getElementById('emp
 
 /* ================= 保存 ================= */
 function payload(){ var a=[]; for(var k in marks) if(marks[k]) a.push(String(k));
-  return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm}; }
+  return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm, edits:edits}; }
 function persist(){
   var p=payload();
   lsSet('marks', JSON.stringify(p.marks)); lsSet('miss', JSON.stringify(p.miss));
   lsSet('groups',JSON.stringify(p.groups)); lsSet('gm', JSON.stringify(p.gm));
-  lsSet('ts', String(p.ts));
+  lsSet('edits', JSON.stringify(p.edits));
+  lsSet('ts', String(p.ts)); GS=null;
 }
 function loadState(){
   try{ (JSON.parse(lsGet('marks','[]'))||[]).forEach(function(id){ marks[String(id)]=1; }); }catch(e){}
   try{ miss=JSON.parse(lsGet('miss','{}'))||{}; }catch(e){ miss={}; }
   try{ groups=JSON.parse(lsGet('groups','[]'))||[]; }catch(e){ groups=[]; }
   try{ gm=JSON.parse(lsGet('gm','{}'))||{}; }catch(e){ gm={}; }
+  try{ edits=JSON.parse(lsGet('edits','{}'))||{}; }catch(e){ edits={}; }
 }
 function prep(rows){
   DATA=rows;
@@ -373,12 +396,27 @@ function prep(rows){
     r._v=variants(r.en);
     r._len=(String(r.en).match(/[A-Za-z]/g)||[]).length;
     r._wc=r._w.filter(function(x){return x.length>0;}).length;
-    r._miss=(miss[r.id]||[]).length;
+    r._miss=(miss[r.id]||[]).length; r._ojp=String(r.jp);
   });
+  applyEdits();
   BYID={}; DATA.forEach(function(r){ BYID[r.id]=r; });
 }
 var BYID={};
 function syncMiss(){ DATA.forEach(function(r){ r._miss=(miss[r.id]||[]).length; }); }
+function applyEdits(){
+  for(var id in edits){
+    var r=BYID[id]; if(!r) continue;
+    var e=edits[id];
+    if(e && typeof e.jp==='string'){ r.jp=e.jp; r._jp=e.jp.toLowerCase(); }
+  }
+}
+function saveEdit(id, jp){
+  var r=BYID[id]; if(!r) return;
+  jp=String(jp);
+  if(jp===r._ojp) delete edits[id]; else edits[id]={jp:jp};
+  r.jp=jp; r._jp=jp.toLowerCase();
+  persist(); render();
+}
 
 /* ================= グループ ================= */
 function gById(id){ for(var i=0;i<groups.length;i++) if(groups[i].id===id) return groups[i]; return null; }
@@ -389,11 +427,71 @@ function gColor(g){ return GCOLORS[(g&&g.c)||0]; }
 function addToGroup(e,g){ var a=gm[e]||(gm[e]=[]); if(a.indexOf(g)<0) a.push(g); }
 function removeFromGroup(e,g){ var a=gm[e]; if(!a) return; var i=a.indexOf(g); if(i>=0) a.splice(i,1);
   if(!a.length) delete gm[e]; }
-function createGroup(n){ n=String(n||'').trim(); if(!n) return null;
-  var g={id:newGid(), name:n, c:groups.length%GCOLORS.length}; groups.push(g); return g; }
+function createGroup(n, parent){ n=String(n||'').trim(); if(!n) return null;
+  var g={id:newGid(), name:n, c:groups.length%GCOLORS.length, p:parent||''};
+  groups.push(g); GS=null; return g; }
+function childMap(){
+  var kids={};
+  for(var i=0;i<groups.length;i++){ var pp=groups[i].p||''; (kids[pp]=kids[pp]||[]).push(groups[i]); }
+  for(var k in kids) kids[k].sort(function(a,b){ return a.name.localeCompare(b.name,'ja'); });
+  return kids;
+}
+function sortedGroups(){
+  var kids=childMap(), out=[], seen={};
+  (function walk(pid, depth){
+    var arr=kids[pid]||[];
+    for(var i=0;i<arr.length;i++){
+      var g=arr[i]; if(seen[g.id]||depth>8) continue;
+      seen[g.id]=1; g._d=depth; out.push(g); walk(g.id, depth+1);
+    }
+  })('', 0);
+  for(var j=0;j<groups.length;j++) if(!seen[groups[j].id]){ groups[j]._d=0; out.push(groups[j]); }
+  return out;
+}
+function descendantsOf(gid){
+  var kids=childMap(), acc=[], stack=(kids[gid]||[]).map(function(g){return g.id;}), guard=0;
+  while(stack.length && guard++<9999){
+    var c=stack.pop(); if(acc.indexOf(c)>=0) continue; acc.push(c);
+    (kids[c]||[]).forEach(function(g){ stack.push(g.id); });
+  }
+  return acc;
+}
+function gstat(){
+  if(GS) return GS;
+  var own={}, members={}, i;
+  for(i=0;i<groups.length;i++){ own[groups[i].id]=0; members[groups[i].id]={}; }
+  for(var k in gm){ var a=gm[k]||[];
+    for(i=0;i<a.length;i++) if(members[a[i]]){ members[a[i]][k]=1; own[a[i]]++; } }
+  var tot={};
+  for(i=0;i<groups.length;i++){
+    var g=groups[i], set={}, list=[g.id].concat(descendantsOf(g.id));
+    for(var j=0;j<list.length;j++){ var m=members[list[j]]||{}; for(var e in m) set[e]=1; }
+    tot[g.id]=Object.keys(set).length;
+  }
+  GS={own:own, tot:tot}; return GS;
+}
+function gLabel(g){ var st=gstat(), o=st.own[g.id]||0, t=st.tot[g.id]||0;
+  return (t>o)?(o+'/'+t):(''+o); }
+function gInd(g){ return 'margin-left:'+((g._d||0)*14)+'px'; }
+function parentOptions(gid){
+  var bad={}; bad[gid]=1;
+  descendantsOf(gid).forEach(function(x){ bad[x]=1; });
+  var cur=(gById(gid)||{}).p||'', list=sortedGroups();
+  var h='<option value="">（親なし）</option>';
+  for(var i=0;i<list.length;i++){
+    var g=list[i]; if(bad[g.id]) continue;
+    var ind=''; for(var d=0;d<(g._d||0);d++) ind+='　';
+    h+='<option value="'+g.id+'"'+(cur===g.id?' selected':'')+'>'+ind+esc(g.name)+'</option>';
+  }
+  return h;
+}
 function refreshGroupSel(){
-  var cur=gFilter, h='<option value="">組：全部</option><option value="__none__">組なし</option>';
-  for(var i=0;i<groups.length;i++) h+='<option value="'+groups[i].id+'">'+esc(groups[i].name)+'（'+groupCount(groups[i].id)+'）</option>';
+  var cur=gFilter, list=sortedGroups();
+  var h='<option value="">組：全部</option><option value="__none__">組なし</option>';
+  for(var i=0;i<list.length;i++){
+    var g=list[i], ind=''; for(var d=0;d<(g._d||0);d++) ind+='　';
+    h+='<option value="'+g.id+'">'+ind+esc(g.name)+'（'+gLabel(g)+'）</option>';
+  }
   gsel.innerHTML=h; gsel.value=cur; if(gsel.value!==cur){ gFilter=''; gsel.value=''; }
 }
 
@@ -422,6 +520,7 @@ function card(r, needles){
 
 function sortedList(){
   if(sortMode==='def') return DATA;
+  if(sortMode==='numdesc'){ var d=DATA.slice(); d.reverse(); return d; }
   var a=DATA.slice();
   a.sort(function(x,y){ var d=(y._miss||0)-(x._miss||0); if(sortMode==='missasc') d=-d; return d||(x._i-y._i); });
   return a;
@@ -435,11 +534,20 @@ function render(){
   clearBtn.style.display=raw?'block':'none';
   var list=sortedList(), total=0;
   filtered=[];
+  var gfSet={};
+  if(gFilter && gFilter!=='__none__'){
+    gfSet[gFilter]=1;
+    descendantsOf(gFilter).forEach(function(x){ gfSet[x]=1; });
+  }
   for(var i=0;i<list.length;i++){
     var r=list[i];
     if(markOnly && !marks[r.id]) continue;
     if(gFilter==='__none__'){ if((gm[r.id]||[]).length) continue; }
-    else if(gFilter){ if((gm[r.id]||[]).indexOf(gFilter)<0) continue; }
+    else if(gFilter){
+      var mem=gm[r.id]||[], hit=false;
+      for(var gi=0;gi<mem.length;gi++) if(gfSet[mem[gi]]){ hit=true; break; }
+      if(!hit) continue;
+    }
     if(!passFilter(r)) continue;
     total++;
     var res=matchEntry(r, raw, andMode);
@@ -465,19 +573,44 @@ document.getElementById('main').addEventListener('scroll', function(e){
 });
 
 /* ================= シート ================= */
-function openSheet(){ ovl.classList.add('open'); }
+/* iOSはキーボードが出ると見た目の表示領域だけ縮むため、
+   シートの高さを visualViewport に合わせないとタップ位置が1行ズレる */
+function fitOverlay(){
+  var vv=window.visualViewport; if(!vv) return;
+  ovl.style.height=vv.height+'px';
+  ovl.style.top=(vv.offsetTop||0)+'px';
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', fitOverlay);
+  window.visualViewport.addEventListener('scroll', fitOverlay);
+}
+function blurInputs(){ try{ var a=document.activeElement;
+  if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA')) a.blur(); }catch(e){} }
+function openSheet(){
+  /* 操作バーをスクロール領域の外へ出す（下に隠れた行がタップできなくなるのを防ぐ） */
+  var f=document.getElementById('sh-f');
+  if(f){ f.innerHTML=''; var a=shB.querySelector('.sh-act'); if(a) f.appendChild(a); }
+  var tp=document.getElementById('sh-top');
+  if(tp){ tp.innerHTML=''; var hd=shB.querySelector('.ghead'); if(hd) tp.appendChild(hd); }
+  ovl.classList.add('open'); fitOverlay();
+}
 function closeSheet(){ ovl.classList.remove('open'); gPickId=null; dlgId=null; sheetMode=''; }
 document.getElementById('sh-x').addEventListener('click', closeSheet);
 ovl.addEventListener('click', function(e){ if(e.target===ovl) closeSheet(); });
 
-function afterChange(){ persist(); refreshGroupSel(); render(); }
+function afterChange(){ GS=null; persist(); refreshGroupSel(); render(); }
 
 /* --- 間違いの履歴 --- */
 function openHist(id){
   sheetMode='hist'; dlgId=id;
   var r=BYID[id], a=(miss[id]||[]).slice();
-  shT.textContent=r.en; shS.textContent=r.jp;
-  var h='<div class="note">これまでに <b style="color:var(--miss);font-size:16px">'+a.length+'</b> 回 間違えています</div>';
+  shT.textContent=r.en; shS.textContent=edits[id]?'（訳を編集済み）':'';
+  var h='<div class="ed"><div class="edlab">意味（ここで書き換えられます）</div>'
+   + '<textarea id="edjp" rows="2">'+esc(r.jp)+'</textarea>'
+   + '<div class="edrow"><button class="gbtn" id="edsave">保存</button>'
+   + (edits[id]?'<button class="gbtn" id="edreset">元に戻す</button>':'')
+   + '<span class="edmsg" id="edmsg"></span></div></div>';
+  h+='<div class="note">これまでに <b style="color:var(--miss);font-size:16px">'+a.length+'</b> 回 間違えています</div>';
   if(!a.length) h+='<div class="note">まだ記録はありません</div>';
   else{ h+='<ul class="hist">';
     for(var i=a.length-1;i>=0;i--) h+='<li><span>'+fmtDate(a[i])+'</span><button class="dl-x" data-hx="'+i+'">×</button></li>';
@@ -499,13 +632,15 @@ function openGroupPicker(id){
   sheetMode='pick'; gPickId=id;
   var r=BYID[id]; if(!r) return;
   shT.textContent=r.en; shS.textContent='グループに入れる（複数OK）';
-  var mine=entryGroups(id), h=gFilterBox();
+  var mine=entryGroups(id), h=gFilterBox(), gl=sortedGroups();
   if(!groups.length) h+='<div class="note">まだグループがありません。下で作れます。</div>';
-  for(var i=0;i<groups.length;i++){ var g=groups[i];
-    h+='<label class="gchk" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'">'
-     + '<input type="checkbox" data-gid="'+g.id+'"'+(mine.indexOf(g.id)>=0?' checked':'')+'>'
-     + '<span class="gdot" style="background:'+gColor(g)+'"></span><span>'+esc(g.name)+'</span>'
-     + '<span class="gcount">'+groupCount(g.id)+'</span></label>';
+  for(var i=0;i<gl.length;i++){ var g=gl[i];
+    var on=mine.indexOf(g.id)>=0;
+    h+='<div class="gchk'+(on?' on':'')+'" data-gpick="'+g.id+'"'
+     + ' data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'">'
+     + '<span class="cb">'+(on?'✓':'')+'</span>'
+     + '<span class="gdot" style="background:'+gColor(g)+'"></span><span class="gnm">'+esc(g.name)+'</span>'
+     + '<span class="gcount">'+gLabel(g)+'</span></div>';
   }
   h+='<div class="sh-act"><input id="gnew" type="text" placeholder="新しいグループ名（例：re系）">'
    + '<button class="big" data-gadd="pick">＋ 作ってここに入れる</button></div>';
@@ -514,15 +649,17 @@ function openGroupPicker(id){
 function openGroupManager(){
   sheetMode='mgr'; gPickId=null;
   shT.textContent='グループの管理'; shS.textContent=groups.length+' 個';
-  var h=gFilterBox();
+  var h=gFilterBox(), gl=sortedGroups();
   if(!groups.length) h+='<div class="note">まだグループがありません</div>';
-  for(var i=0;i<groups.length;i++){ var g=groups[i];
-    h+='<div class="gm-row" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'">'
+  h+='<div class="note">「親」を選ぶとグループの中に入れ子にできます。件数は「自分だけ／子を含む合計」です。</div>';
+  for(var i=0;i<gl.length;i++){ var g=gl[i];
+    h+='<div class="gm-row" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'">'
      + '<input type="text" data-gname="'+g.id+'" value="'+esc(g.name).replace(/"/g,'&quot;')+'">'
+     + '<select class="gpar" data-gpar="'+g.id+'">'+parentOptions(g.id)+'</select>'
      + '<span class="gm-colors" data-gcol="'+g.id+'">';
     for(var c=0;c<GCOLORS.length;c++)
       h+='<span class="gm-c'+(((g.c||0)===c)?' on':'')+'" data-c="'+c+'" style="background:'+GCOLORS[c]+'"></span>';
-    h+='</span><span class="gcount">'+groupCount(g.id)+'</span><button class="dl-x" data-gdel="'+g.id+'">×</button></div>';
+    h+='</span><span class="gcount">'+gLabel(g)+'</span><button class="dl-x" data-gdel="'+g.id+'">×</button></div>';
   }
   h+='<div class="sh-act"><input id="gnew2" type="text" placeholder="新しいグループ名">'
    + '<button class="big" data-gadd="mgr">＋ グループを作る</button></div>';
@@ -532,13 +669,13 @@ function openBulk(){
   sheetMode='bulk'; gPickId=null;
   shT.textContent='表示中の '+filtered.length+' 件をまとめて';
   shS.textContent=(qEl.value.trim()? '検索：'+qEl.value.trim() : '（絞り込みなし）');
-  var h=gFilterBox();
+  var h=gFilterBox(), gl=sortedGroups();
   if(!filtered.length) h+='<div class="note">表示中の項目がありません</div>';
   else if(!groups.length) h+='<div class="note">まだグループがありません。下で作れます。</div>';
-  for(var i=0;i<groups.length;i++){ var g=groups[i];
-    h+='<div class="gbar" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'"><span class="nm">'
+  for(var i=0;i<gl.length;i++){ var g=gl[i];
+    h+='<div class="gbar" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'"><span class="nm">'
      + '<span class="gdot" style="background:'+gColor(g)+'"></span>'+esc(g.name)
-     + '<span class="gcount">'+groupCount(g.id)+'</span></span>'
+     + '<span class="gcount">'+gLabel(g)+'</span></span>'
      + '<button class="gbtn" data-badd="'+g.id+'">追加</button>'
      + '<button class="gbtn" data-brem="'+g.id+'">外す</button></div>';
   }
@@ -580,7 +717,9 @@ function openHelp(){
   var h='<table class="htab">';
   for(var i=0;i<rows.length;i++) h+='<tr><td><code>'+esc(rows[i][0])+'</code></td><td>'+esc(rows[i][1])+'</td></tr>';
   h+='</table><div class="note"><b>順不同</b>をONにすると <code>be in</code> で「be と in を両方含む」（順序自由）。<br>'
-   + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。</div>';
+   + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。<br>'
+   + '<b>組の管理</b>で「親」を選ぶとグループを入れ子にでき、親を選ぶと子の分もまとめて出ます。<br>'
+   + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。</div>';
   shB.innerHTML=h; openSheet();
 }
 
@@ -642,7 +781,7 @@ function applyDataset(rows, meta, state){
   dsMeta={kind:KIND, title:TITLE};
   if(state){
     marks={}; (state.marks||[]).forEach(function(id){ marks[String(id)]=1; });
-    miss=state.miss||{}; groups=state.groups||[]; gm=state.gm||{};
+    miss=state.miss||{}; groups=state.groups||[]; gm=state.gm||{}; edits=state.edits||{};
     persist();
   }
   prep(rows); syncMiss(); refreshGroupSel(); updateSub(); render();
@@ -669,7 +808,7 @@ function handleFile(f, wantRows){
       if(obj.kind && obj.kind!==KIND && !confirm('このファイルは「'+(obj.title||obj.kind)+'」用のようです。取り込みますか？')) return;
       if(obj.rows && obj.rows.length){ if(applyDataset(obj.rows, obj, st)) alert('取り込みました。'+obj.rows.length+'件'); }
       else if(st){ marks={}; (st.marks||[]).forEach(function(id){ marks[String(id)]=1; });
-        miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{};
+        miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{}; edits=st.edits||{}; applyEdits();
         persist(); syncMiss(); refreshGroupSel(); render();
         alert('記録を戻しました。★'+markCount()+'件'); }
       closeSheet(); return;
@@ -711,9 +850,17 @@ listEl.addEventListener('click', function(e){
   if(act==='grp'){ openGroupPicker(id); return; }
 });
 
-shB.addEventListener('click', function(e){
+ovl.addEventListener('click', function(e){
   var t=e.target; if(!t.getAttribute) return;
   var v;
+  if(t.id==='edsave' && dlgId){
+    blurInputs();
+    saveEdit(dlgId, document.getElementById('edjp').value);
+    var m=document.getElementById('edmsg'); if(m){ m.textContent='保存しました'; setTimeout(function(){ if(m) m.textContent=''; },1600); }
+    shS.textContent=edits[dlgId]?'（訳を編集済み）':'';
+    return;
+  }
+  if(t.id==='edreset' && dlgId){ blurInputs(); saveEdit(dlgId, BYID[dlgId]._ojp); openHist(dlgId); return; }
   if((v=t.getAttribute('data-hx'))!==null && v!==undefined && dlgId){
     var a=miss[dlgId]; if(!a) return;
     a.splice(parseInt(v,10),1); if(!a.length) delete miss[dlgId];
@@ -723,11 +870,24 @@ shB.addEventListener('click', function(e){
     (miss[dlgId]||(miss[dlgId]=[])).push(Date.now());
     persist(); syncMiss(); render(); openHist(dlgId); return;
   }
+  var row=t; while(row && row.getAttribute && !row.getAttribute('data-gpick')) row=row.parentNode;
+  if(row && row.getAttribute && row.getAttribute('data-gpick') && gPickId){
+    blurInputs();
+    var gid2=row.getAttribute('data-gpick');
+    var has=(gm[gPickId]||[]).indexOf(gid2)>=0;
+    if(has) removeFromGroup(gPickId,gid2); else addToGroup(gPickId,gid2);
+    afterChange();
+    row.classList.toggle('on', !has);
+    var cb=row.querySelector('.cb'); if(cb) cb.textContent=has?'':'✓';
+    var lbl=row.querySelector('.gcount'); if(lbl) lbl.textContent=gLabel(gById(gid2));
+    return;
+  }
   if((v=t.getAttribute('data-gadd'))){
     var box=document.getElementById(v==='pick'?'gnew':(v==='mgr'?'gnew2':'gnew3'));
     var g=createGroup(box.value); if(!g) return;
     if(v==='pick' && gPickId) addToGroup(gPickId, g.id);
     if(v==='bulk') for(var i=0;i<filtered.length;i++) addToGroup(filtered[i].id, g.id);
+    blurInputs();
     var keep=gPickId; afterChange();
     if(v==='pick') openGroupPicker(keep); else if(v==='mgr') openGroupManager(); else openBulk();
     return;
@@ -764,17 +924,18 @@ shB.addEventListener('click', function(e){
   if(m==='clearmiss'){ if(!missTotal()) return;
     if(confirm('間違いの記録を全部消します。元に戻せません。')){ miss={}; persist(); syncMiss(); render(); closeSheet(); } return; }
 });
-shB.addEventListener('change', function(e){
+ovl.addEventListener('change', function(e){
   var t=e.target;
   if(t.id==='impfile'){ if(t.files&&t.files[0]) handleFile(t.files[0]); return; }
-  if(t.type==='checkbox' && t.getAttribute('data-gid') && gPickId){
-    var gid=t.getAttribute('data-gid');
-    if(t.checked) addToGroup(gPickId,gid); else removeFromGroup(gPickId,gid);
-    afterChange();
-    var lbl=t.parentNode.querySelector('.gcount'); if(lbl) lbl.textContent=groupCount(gid);
+  var pid=t.getAttribute && t.getAttribute('data-gpar');
+  if(pid){
+    var g=gById(pid); if(!g) return;
+    var np=t.value||'';
+    if(np===pid || descendantsOf(pid).indexOf(np)>=0){ alert('その組み合わせは選べません。'); openGroupManager(); return; }
+    g.p=np; afterChange(); openGroupManager(); return;
   }
 });
-shB.addEventListener('input', function(e){
+ovl.addEventListener('input', function(e){
   var t=e.target;
   if(t.id==='gfil'){ gDlgFilter=t.value; applyGFilter(); return; }
   var gid=t.getAttribute && t.getAttribute('data-gname');

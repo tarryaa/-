@@ -1,4 +1,4 @@
-const C='eigo-v1789174015';
+const C='eigo-v1790045725';
 const F=['sokudoku.html','systan.html','manifest-soku.webmanifest','manifest-sys.webmanifest',
  'icon-soku-180.png','icon-sys-180.png','index.html'];
 self.addEventListener('install',e=>{self.skipWaiting();
