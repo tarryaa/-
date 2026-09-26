@@ -64,6 +64,20 @@ main{flex:1; overflow-y:auto;
   background:var(--shin-bg); color:var(--shin-fg)}
 .gdots{display:flex; gap:2px; flex:none}
 .gdot{width:7px; height:7px; border-radius:50%; display:inline-block}
+.spk{border:none; background:transparent; color:var(--muted); width:30px; height:26px; padding:0;
+  border-radius:7px; flex:none; display:inline-flex; align-items:center; justify-content:center; margin:0 -2px}
+.spk svg{pointer-events:none}
+.spk.on{color:var(--accent); background:var(--accent-soft)}
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+  background:rgba(20,24,30,.96); color:#fff; padding:11px 14px; border-radius:11px; font-size:13px;
+  line-height:1.55; width:max-content; max-width:88%; z-index:90; opacity:0; pointer-events:none; transition:opacity .2s}
+.toast.show{opacity:1}
+.tts-row{padding:12px 2px; border-bottom:1px solid var(--border)}
+.tts-lab{display:flex; justify-content:space-between; align-items:baseline; font-size:14px; margin-bottom:8px}
+.tts-lab b{color:var(--accent); font-variant-numeric:tabular-nums}
+.tts-row input[type=range]{width:100%; accent-color:var(--accent); height:28px}
+.tts-sel{width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:9px; padding:10px; font-size:15px}
 .star{border:none; background:transparent; color:var(--muted); font-size:19px; width:30px; height:26px;
   margin:0 -4px 0 0; line-height:1; flex:none}
 .star.on{color:var(--star)}
@@ -192,6 +206,7 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <div class="sh-f" id="sh-f"></div>
   </div>
 </div>
+<div class="toast" id="toast"></div>
 <script>
 var NS='soku', KIND='soku', TITLE='速読英熟語', IS_SOKU=true, IMPORTNAME='soku-backup.json';
 
@@ -572,6 +587,7 @@ function card(r, needles){
         : '<span class="badge num">'+r.no+'</span>'+(r.s?'<span class="shin">新</span>':''));
   return '<div class="card" data-id="'+r.id+'">'
    + '<div class="r1">'+badge+'<span class="gdots">'+dots+'</span>'
+   + (HAS_TTS ? '<button class="spk" data-act="speak" aria-label="発音を聞く">'+SPK_SVG+'</button>' : '')
    + '<span class="en">'+hlMulti(r.en,needles)+'</span>'
    + '<button class="star'+(on?' on':'')+'" data-act="star">'+(on?'★':'☆')+'</button></div>'
    + '<div class="r2"><span class="jp">'+hlMulti(r.jp,needles)+'</span>'
@@ -868,6 +884,92 @@ function openBulk(){
    + '<button class="big" data-gadd="bulk">＋ 作って表示中を全部入れる</button></div>';
   shB.innerHTML=h; openSheet(); applyGFilter();
 }
+/* ================= 発音（iPhone内蔵の読み上げ音声） =================
+   Google翻訳の音声はiOSでは音量を変えられない（外部音声の音量はアプリから変更不可）ため、
+   音量・速さ・声を指定できる端末内蔵の読み上げ(speechSynthesis)を使う。ネット不要。 */
+var HAS_TTS=(KIND==='sys') && ('speechSynthesis' in window);
+var SPK_SVG='<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M3 10v4h4l5 4V6L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
+var TTS={vol:1, rate:0.9, voice:''};
+try{ var _t=JSON.parse(lsGet('tts','null'));
+  if(_t){ if(typeof _t.vol==='number') TTS.vol=_t.vol; if(typeof _t.rate==='number') TTS.rate=_t.rate;
+          if(typeof _t.voice==='string') TTS.voice=_t.voice; } }catch(e){}
+function toast(msg){
+  var el=document.getElementById('toast'); if(!el){ alert(msg); return; }
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(function(){ el.classList.remove('show'); }, 4000);
+}
+function saveTts(){ try{ localStorage.setItem(NS+'.tts', JSON.stringify(TTS)); }catch(e){} }
+function ttsVoices(){
+  if(!window.speechSynthesis) return [];
+  return speechSynthesis.getVoices().filter(function(v){ return /^en([-_]|$)/i.test(v.lang); });
+}
+function pickVoice(){
+  var vs=ttsVoices(), i;
+  if(!vs.length) return null;
+  if(TTS.voice) for(i=0;i<vs.length;i++) if(vs[i].voiceURI===TTS.voice) return vs[i];
+  for(i=0;i<vs.length;i++) if(/^en[-_]US/i.test(vs[i].lang) && vs[i]['default']) return vs[i];
+  for(i=0;i<vs.length;i++) if(/^en[-_]US/i.test(vs[i].lang)) return vs[i];
+  return vs[0];
+}
+/* 読み上げ用に記号を外す（自作の単語向け。本の2027語はもともと記号なし） */
+function speakText(s){
+  return String(s).replace(/[〔（(\[【][^〕）)\]】]*[〕）)\]】]/g,' ')
+                  .replace(/[～~…]/g,' ').replace(/\.\.\./g,' ').replace(/\s+/g,' ').trim();
+}
+var speakingBtn=null;
+var NO_EN_MSG='英語の読み上げ音声が見つかりません。設定 → アクセシビリティ → 読み上げコンテンツ → 声 → 英語 から追加してください';
+function speak(text, btn){
+  if(!window.speechSynthesis){ toast('この端末では読み上げが使えません'); return; }
+  var t=speakText(text); if(!t) return;
+  var all=speechSynthesis.getVoices()||[], v=pickVoice();
+  /* 英語の声が無い端末で読ませると、日本語の声がカタカナ英語で読んでしまう（発音が大きく違う）。
+     その場合は読まずに案内する。声の一覧がまだ空＝読み込み中のときは、言語(en-US)の指定で端末に任せる */
+  if(all.length && !v){ toast(NO_EN_MSG); return; }
+  var u=new SpeechSynthesisUtterance(t);
+  u.lang=v?v.lang:'en-US';
+  if(v){ try{ u.voice=v; }catch(e){ u.lang='en-US'; } }   /* 万一声を指定できなくても英語指定で読む */
+  u.volume=Math.max(0, Math.min(1, TTS.vol));
+  u.rate=Math.max(0.5, Math.min(1.5, TTS.rate));
+  if(speakingBtn) speakingBtn.classList.remove('on');
+  if(btn && btn.classList){ btn.classList.add('on'); speakingBtn=btn; }
+  u.onend=u.onerror=function(){ if(btn && btn.classList) btn.classList.remove('on'); if(speakingBtn===btn) speakingBtn=null; };
+  /* 連打したときは前の読み上げを止めてから。iOSは止めた直後に話させると
+     無視されることがあるので、そのときだけ一呼吸おく。
+     待っている間に次が押されたら古い方は捨てる（常に最後に押した単語だけを読む） */
+  clearTimeout(speakTimer); speakTimer=null;
+  if(speechSynthesis.speaking || speechSynthesis.pending){
+    speechSynthesis.cancel();
+    speakTimer=setTimeout(function(){ speakTimer=null; speechSynthesis.speak(u); }, 80);
+  } else {
+    speechSynthesis.speak(u);
+  }
+}
+var speakTimer=null;
+if(HAS_TTS){
+  try{ speechSynthesis.getVoices(); }catch(e){}
+  if(speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', function(){ if(sheetMode==='tts') openTts(); });
+}
+function openTts(){
+  sheetMode='tts'; dlgId=null;
+  shT.textContent='発音の設定'; shS.textContent='カードの 🔊 を押すと英語を読み上げます';
+  var vs=ttsVoices(), opts='<option value="">おまかせ（アメリカ英語）</option>';
+  for(var i=0;i<vs.length;i++)
+    opts+='<option value="'+esc(vs[i].voiceURI).replace(/"/g,'&quot;')+'"'+(TTS.voice===vs[i].voiceURI?' selected':'')+'>'
+        + esc(vs[i].name)+'（'+esc(vs[i].lang)+'）</option>';
+  var noEn=(speechSynthesis.getVoices()||[]).length>0 && !vs.length;
+  shB.innerHTML=
+     (noEn ? '<div class="note" style="color:var(--miss)"><b>'+NO_EN_MSG+'</b></div>' : '')
+   + '<div class="tts-row"><div class="tts-lab"><span>音量</span><b id="ttsvolv">'+Math.round(TTS.vol*100)+'%</b></div>'
+   + '<input type="range" id="ttsvol" min="0" max="100" step="5" value="'+Math.round(TTS.vol*100)+'"></div>'
+   + '<div class="tts-row"><div class="tts-lab"><span>速さ</span><b id="ttsratev">'+TTS.rate.toFixed(2)+' 倍</b></div>'
+   + '<input type="range" id="ttsrate" min="0.5" max="1.5" step="0.05" value="'+TTS.rate+'"></div>'
+   + '<div class="tts-row"><div class="tts-lab"><span>声</span></div><select id="ttsvoice" class="tts-sel">'+opts+'</select></div>'
+   + '<div class="note">声の種類は iPhone の「設定 → アクセシビリティ → 読み上げコンテンツ → 声 → 英語」で増やせます（高音質版もあります）。<br>'
+   + '音が出ないときは、本体の音量とマナーモードのスイッチも確認してください。</div>'
+   + '<div class="sh-act"><button class="big solid" data-m="ttstest">▶ 試しに再生</button></div>';
+  openSheet();
+}
+
 /* --- 自作の単語を追加 --- */
 function openAdd(){
   sheetMode='add'; dlgId=null;
@@ -904,6 +1006,7 @@ function openMenu(){
   var st=missTotal();
   shB.innerHTML=
      '<button class="mi" data-m="add">＋ <span>'+(IS_SOKU?'熟語':'単語')+'を追加（自作 '+custom.length+'）</span></button>'
+   + (HAS_TTS ? '<button class="mi" data-m="tts">🔊 <span>発音の設定</span></button>' : '')
    + '<button class="mi" data-m="help">📖 <span>検索のコツ</span></button>'
    + '<button class="mi" data-m="import">📥 <span>単語データを取り込む</span></button>'
    + '<button class="mi" data-m="export">💾 <span>バックアップを書き出す</span></button>'
@@ -935,7 +1038,9 @@ function openHelp(){
    + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。<br>'
    + '<b>組の管理</b>で「親」を選ぶとグループを入れ子にでき、親を選ぶと子の分もまとめて出ます。<br>'
    + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。<br>'
-   + '<b>自作の'+(IS_SOKU?'熟語':'単語')+'</b>は ⋯ →「追加」から。「自作」チップで一覧、カードの「自作」をタップで修正・削除できます。</div>';
+   + '<b>自作の'+(IS_SOKU?'熟語':'単語')+'</b>は ⋯ →「追加」から。「自作」チップで一覧、カードの「自作」をタップで修正・削除できます。'
+   + (HAS_TTS ? '<br><b>発音</b>はカードの 🔊 で。音量・速さ・声は ⋯ →「発音の設定」で変えられます。' : '')
+   + '</div>';
   shB.innerHTML=h; openSheet();
 }
 
@@ -1062,6 +1167,7 @@ listEl.addEventListener('click', function(e){
     return;
   }
   if(act==='hist'){ openHist(id); return; }
+  if(act==='speak'){ speak(r.en, t); return; }
   if(act==='grp'){ openGroupPicker(id); return; }
 });
 
@@ -1126,6 +1232,8 @@ ovl.addEventListener('click', function(e){
   var m=t.getAttribute('data-m'); if(!m && t.parentNode.getAttribute) m=t.parentNode.getAttribute('data-m');
   if(m==='help'){ openHelp(); return; }
   if(m==='add'){ openAdd(); return; }
+  if(m==='tts'){ openTts(); return; }
+  if(m==='ttstest'){ speak('pronunciation', t); return; }
   if(m==='doadd'){ doAdd(); return; }
   if(m==='import'){ openImport(); return; }
   if(m==='export'){ doExport(); return; }
@@ -1144,6 +1252,7 @@ ovl.addEventListener('click', function(e){
 ovl.addEventListener('change', function(e){
   var t=e.target;
   if(t.id==='impfile'){ if(t.files&&t.files[0]) handleFile(t.files[0]); return; }
+  if(t.id==='ttsvoice'){ TTS.voice=t.value; saveTts(); speak('pronunciation'); return; }
   var pid=t.getAttribute && t.getAttribute('data-gpar');
   if(pid){
     var g=gById(pid); if(!g) return;
@@ -1154,6 +1263,8 @@ ovl.addEventListener('change', function(e){
 });
 ovl.addEventListener('input', function(e){
   var t=e.target;
+  if(t.id==='ttsvol'){ TTS.vol=(+t.value)/100; document.getElementById('ttsvolv').textContent=t.value+'%'; saveTts(); return; }
+  if(t.id==='ttsrate'){ TTS.rate=+t.value; document.getElementById('ttsratev').textContent=TTS.rate.toFixed(2)+' 倍'; saveTts(); return; }
   if(t.id==='adden' || t.id==='addjp'){ autoGrow(t); var am=document.getElementById('addmsg'); if(am) am.textContent=''; return; }
   if(t.id==='edjp' || t.id==='eden'){
     autoGrow(t);
