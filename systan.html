@@ -13,8 +13,8 @@
 <link rel="icon" href="icon-sys-180.png">
 <script>(function(){try{var t=localStorage.getItem('sys.theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
 <style>
-:root{--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--muted:#6b7683;--border:#e3e7ec;--accent:#059669;--accent-soft:#e7f7f0;--mark:#fff2a8;--star:#eab308;--miss:#dc2626;--idiom-bg:#e8f0ff;--idiom-fg:#1d4ed8;--kobun-bg:#fff2e0;--kobun-fg:#b45309;--num-bg:#eef1f5;--num-fg:#475569;--shin-bg:#dcfce7;--shin-fg:#15803d;}
-:root[data-theme="dark"]{--bg:#0b0d10;--panel:#14181d;--text:#e6ebf2;--muted:#9aa6b4;--border:#262c34;--accent:#34d399;--accent-soft:#12281f;--mark:#5c5015;--star:#fbbf24;--miss:#f87171;--idiom-bg:#16263f;--idiom-fg:#8fbcff;--kobun-bg:#33260f;--kobun-fg:#f0b968;--num-bg:#222c38;--num-fg:#aab6c4;--shin-bg:#14331f;--shin-fg:#6ee7a0;}
+:root{--mine-bg:#f3e8ff;--mine-fg:#7e22ce;--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--muted:#6b7683;--border:#e3e7ec;--accent:#059669;--accent-soft:#e7f7f0;--mark:#fff2a8;--star:#eab308;--miss:#dc2626;--idiom-bg:#e8f0ff;--idiom-fg:#1d4ed8;--kobun-bg:#fff2e0;--kobun-fg:#b45309;--num-bg:#eef1f5;--num-fg:#475569;--shin-bg:#dcfce7;--shin-fg:#15803d;}
+:root[data-theme="dark"]{--mine-bg:#2e1a47;--mine-fg:#d8b4fe;--bg:#0b0d10;--panel:#14181d;--text:#e6ebf2;--muted:#9aa6b4;--border:#262c34;--accent:#34d399;--accent-soft:#12281f;--mark:#5c5015;--star:#fbbf24;--miss:#f87171;--idiom-bg:#16263f;--idiom-fg:#8fbcff;--kobun-bg:#33260f;--kobun-fg:#f0b968;--num-bg:#222c38;--num-fg:#aab6c4;--shin-bg:#14331f;--shin-fg:#6ee7a0;}
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0; height:100%; overflow:hidden; overscroll-behavior:none}
@@ -58,6 +58,8 @@ main{flex:1; overflow-y:auto;
 .badge.熟語{background:var(--idiom-bg); color:var(--idiom-fg)}
 .badge.構文{background:var(--kobun-bg); color:var(--kobun-fg)}
 .badge.num{background:var(--num-bg); color:var(--num-fg)}
+.badge.自作{background:var(--mine-bg); color:var(--mine-fg); cursor:pointer}
+.gbtn.danger{border-color:var(--miss); color:var(--miss)}
 .shin{font-size:9.5px; font-weight:700; padding:0 5px; border-radius:4px; flex:none;
   background:var(--shin-bg); color:var(--shin-fg)}
 .gdots{display:flex; gap:2px; flex:none}
@@ -162,7 +164,7 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <button id="clear">×</button>
   </div>
   <div class="chips">
-    <button class="chip active" data-f="all">すべて</button><button class="chip" data-f="shin">新</button>
+    <button class="chip active" data-f="all">すべて</button><button class="chip" data-f="shin">新</button><button class="chip" data-f="自作">自作</button>
     <button class="chip" id="markbtn">★のみ</button>
     <button class="chip" id="andbtn">順不同 OFF</button>
     <select class="chip" id="gsel"><option value="">組：全部</option></select>
@@ -353,6 +355,7 @@ function hlMulti(text, needles){
 /* ================= 状態 ================= */
 var DATA=[], dsMeta=null;
 var marks={}, miss={}, groups=[], gm={}, edits={}, GS=null;
+var custom=[], customSeq=0, BOOK=[];   /* custom=自分で追加した単語、BOOK=本の単語 */
 var filter='all', andMode=false, markOnly=false, sortMode='def', gFilter='';
 var GCOLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
 var filtered=[], rendered=0, CHUNK=120, gPickId=null, dlgId=null, gDlgFilter='', sheetMode='';
@@ -373,12 +376,14 @@ var listEl=document.getElementById('list'), emptyEl=document.getElementById('emp
 
 /* ================= 保存 ================= */
 function payload(){ var a=[]; for(var k in marks) if(marks[k]) a.push(String(k));
-  return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm, edits:edits}; }
+  return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm, edits:edits,
+          custom:custom, customSeq:customSeq}; }
 function persist(){
   var p=payload();
   lsSet('marks', JSON.stringify(p.marks)); lsSet('miss', JSON.stringify(p.miss));
   lsSet('groups',JSON.stringify(p.groups)); lsSet('gm', JSON.stringify(p.gm));
   lsSet('edits', JSON.stringify(p.edits));
+  lsSet('custom', JSON.stringify(p.custom)); lsSet('customSeq', String(p.customSeq));
   lsSet('ts', String(p.ts)); GS=null; GIDX=null;
 }
 function loadState(){
@@ -387,17 +392,33 @@ function loadState(){
   try{ groups=JSON.parse(lsGet('groups','[]'))||[]; }catch(e){ groups=[]; }
   try{ gm=JSON.parse(lsGet('gm','{}'))||{}; }catch(e){ gm={}; }
   try{ edits=JSON.parse(lsGet('edits','{}'))||{}; }catch(e){ edits={}; }
+  try{ custom=JSON.parse(lsGet('custom','[]'))||[]; }catch(e){ custom=[]; }
+  customSeq=parseInt(lsGet('customSeq','0'),10)||0;
+  fixSeq();
 }
+function fixSeq(){ for(var i=0;i<custom.length;i++) if((custom[i].k||0)>customSeq) customSeq=custom[i].k; }
+function prepOne(r,i){
+  /* 何度呼んでも同じ結果になるよう、元の訳(_ojp)を先に確定してから計算する */
+  if(r._ojp===undefined) r._ojp=String(r.jp); else r.jp=r._ojp;
+  r._i=i; r._en=String(r.en).toLowerCase(); r._jp=String(r.jp).toLowerCase();
+  r._w=String(r.en).split(/\s+/).map(normWord);
+  r._v=variants(r.en);
+  r._len=(String(r.en).match(/[A-Za-z]/g)||[]).length;
+  r._wc=r._w.filter(function(x){return x.length>0;}).length;
+  r._miss=(miss[r.id]||[]).length;
+}
+/* 自作の単語は番号をマイナスにして、本の番号検索（300以下 など）に混ざらないようにする */
+function customRow(c){
+  return IS_SOKU ? {id:c.id, n:'', t:'自作', no:-c.k, k:c.k, en:c.en, jp:c.jp, c:1}
+                 : {id:c.id, no:-c.k, k:c.k, en:c.en, jp:c.jp, s:0, c:1, t:'自作'};
+}
+function customById(id){ for(var i=0;i<custom.length;i++) if(custom[i].id===id) return custom[i]; return null; }
+function rebuildData(){ prep(BOOK); }
 function prep(rows){
-  DATA=rows;
-  DATA.forEach(function(r,i){
-    r._i=i; r._en=String(r.en).toLowerCase(); r._jp=String(r.jp).toLowerCase();
-    r._w=String(r.en).split(/\s+/).map(normWord);
-    r._v=variants(r.en);
-    r._len=(String(r.en).match(/[A-Za-z]/g)||[]).length;
-    r._wc=r._w.filter(function(x){return x.length>0;}).length;
-    r._miss=(miss[r.id]||[]).length; r._ojp=String(r.jp);
-  });
+  BOOK=(rows||[]).filter(function(r){ return !r.c; });
+  DATA=BOOK.slice();
+  for(var i=0;i<custom.length;i++) DATA.push(customRow(custom[i]));
+  DATA.forEach(prepOne);
   BYID={}; DATA.forEach(function(r){ BYID[r.id]=r; });
   applyEdits();   /* 索引(BYID)を作ってから反映する。逆順だと起動時に空振りして訳が元に戻る */
 }
@@ -413,9 +434,39 @@ function applyEdits(){
 function saveEdit(id, jp){
   var r=BYID[id]; if(!r) return;
   jp=String(jp);
-  if(jp===r._ojp) delete edits[id]; else edits[id]={jp:jp};
+  if(r.c){ var c=customById(id); if(c) c.jp=jp; r._ojp=jp; }        /* 自作：本体を書き換える */
+  else { if(jp===r._ojp) delete edits[id]; else edits[id]={jp:jp}; } /* 本：差分として保存 */
   r.jp=jp; r._jp=jp.toLowerCase();
   persist(); updateCard(id);
+}
+function saveCustomEn(id, en){
+  var r=BYID[id]; if(!r || !r.c) return;
+  en=String(en).trim(); if(!en) return;
+  var c=customById(id); if(c) c.en=en;
+  r.en=en; r._en=en.toLowerCase(); r._w=en.split(/\s+/).map(normWord); r._v=variants(en);
+  r._len=(en.match(/[A-Za-z]/g)||[]).length; r._wc=r._w.filter(function(x){return x.length>0;}).length;
+  persist(); updateCard(id);
+}
+function addCustom(en, jp){
+  customSeq++;
+  var c={id:'u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), k:customSeq,
+         en:en, jp:jp, ts:Date.now()};
+  custom.push(c);
+  var r=customRow(c); prepOne(r, DATA.length); DATA.push(r); BYID[r.id]=r;
+  persist(); updateSub();
+  return r;
+}
+/* 本の単語は消せない（ボタンも出さないが、念のためここでも拒否する） */
+function deleteCustom(id){
+  var r=BYID[id]; if(!r || !r.c) return false;
+  if(!confirm('「'+r.en+'」を削除します。\n★・間違いの記録・グループからも消えます。元に戻せません。')) return false;
+  clearTimeout(editTimer); editTimer=null;
+  custom=custom.filter(function(c){ return c.id!==id; });
+  delete marks[id]; delete miss[id]; delete gm[id]; delete edits[id];
+  dlgId=null;
+  rebuildData(); persist(); refreshGroupSel(); updateSub();
+  listDirty=true; closeSheet();
+  return true;
 }
 
 /* ================= グループ ================= */
@@ -514,9 +565,11 @@ function fmtDate(ts){ var d=new Date(ts), w='日月火水木金土'.charAt(d.get
 function card(r, needles){
   var on=!!marks[r.id], c=r._miss||0, a=entryGroups(r.id), dots='';
   for(var i=0;i<a.length && i<4;i++){ var g=gById(a[i]); if(g) dots+='<span class="gdot" style="background:'+gColor(g)+'"></span>'; }
-  var badge = IS_SOKU
-      ? '<span class="badge '+r.t+'">'+r.t+' '+r.no+'</span>'
-      : '<span class="badge num">'+r.no+'</span>'+(r.s?'<span class="shin">新</span>':'');
+  var badge = r.c
+      ? '<span class="badge 自作" data-act="hist">自作 '+r.k+'</span>'
+      : (IS_SOKU
+        ? '<span class="badge '+r.t+'">'+r.t+' '+r.no+'</span>'
+        : '<span class="badge num">'+r.no+'</span>'+(r.s?'<span class="shin">新</span>':''));
   return '<div class="card" data-id="'+r.id+'">'
    + '<div class="r1">'+badge+'<span class="gdots">'+dots+'</span>'
    + '<span class="en">'+hlMulti(r.en,needles)+'</span>'
@@ -538,7 +591,7 @@ function sortedList(){
 }
 function passFilter(r){
   if(IS_SOKU) return filter==='all' || r.t===filter;
-  return filter==='all' || (filter==='shin' && r.s===1);
+  return filter==='all' || (filter==='shin' && r.s===1) || (filter==='自作' && r.c===1);
 }
 var mainEl=document.getElementById('main'), listDirty=false;
 function computeFiltered(){
@@ -596,6 +649,9 @@ function render(opts){
   computeFiltered();
   listEl.innerHTML=''; rendered=0;
   emptyEl.style.display=filtered.length?'none':'block';
+  if(!filtered.length && DATA.length) emptyEl.innerHTML = (filter==='自作' && !custom.length)
+    ? '自作の'+(IS_SOKU?'熟語':'単語')+'はまだありません。<br><br>右上の <b>⋯</b> →<br><b>「'+(IS_SOKU?'熟語':'単語')+'を追加」</b>から追加できます。'
+    : '該当する項目がありません';
   var need=CHUNK, aIdx=-1;
   if(opts.keep) need=Math.max(need, prevRendered);
   if(anchor && anchor.id!=null){
@@ -707,25 +763,37 @@ var editTimer=null;
 function autoGrow(ta){ if(!ta) return; ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; }
 function flushEdit(){
   clearTimeout(editTimer); editTimer=null;
+  if(!dlgId) return false;
+  var r=BYID[dlgId]; if(!r) return false;
+  var changed=false;
+  var te=document.getElementById('eden');
+  if(te && r.c && te.value.trim() && te.value.trim()!==r.en){ saveCustomEn(dlgId, te.value); shT.textContent=r.en; changed=true; }
   var ta=document.getElementById('edjp');
-  if(!ta || !dlgId) return false;
-  var r=BYID[dlgId]; if(!r || ta.value===r.jp) return false;
-  saveEdit(dlgId, ta.value);
-  var m=document.getElementById('edmsg'); if(m) m.textContent='保存しました ✓';
-  shS.textContent=edits[dlgId]?'（訳を編集済み）':'';
-  return true;
+  if(ta && ta.value!==r.jp){ saveEdit(dlgId, ta.value); changed=true; }
+  if(changed){
+    var m=document.getElementById('edmsg'); if(m) m.textContent='保存しました ✓';
+    shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[dlgId]?'（訳を編集済み）':'');
+  }
+  return changed;
 }
 
 /* --- 間違いの履歴 --- */
 function openHist(id){
   sheetMode='hist'; dlgId=id;
   var r=BYID[id], a=(miss[id]||[]).slice();
-  shT.textContent=r.en; shS.textContent=edits[id]?'（訳を編集済み）':'';
-  var h='<div class="ed"><div class="edlab">意味（ここで書き換えられます）</div>'
+  shT.textContent=r.en;
+  shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[id]?'（訳を編集済み）':'');
+  var h='<div class="ed">'
+   + (r.c ? '<div class="edlab">'+(IS_SOKU?'熟語':'単語')+'（英語）</div>'
+          + '<textarea id="eden" rows="1" autocapitalize="none" autocorrect="off" spellcheck="false">'+esc(r.en)+'</textarea>'
+          + '<div class="edlab" style="margin-top:10px">意味（ここで書き換えられます）</div>'
+          : '<div class="edlab">意味（ここで書き換えられます）</div>')
    + '<textarea id="edjp" rows="1">'+esc(r.jp)+'</textarea>'
    + '<div class="edrow"><button class="gbtn" id="edsave">保存</button>'
-   + (edits[id]?'<button class="gbtn" id="edreset">元に戻す</button>':'')
-   + '<span class="edmsg" id="edmsg">改行OK・入力すると自動で保存されます</span></div></div>';
+   + (!r.c && edits[id]?'<button class="gbtn" id="edreset">元に戻す</button>':'')
+   + '<span class="edmsg" id="edmsg">改行OK・入力すると自動で保存されます</span></div>'
+   + (r.c ? '<div class="edrow"><button class="gbtn danger" id="eddel">この'+(IS_SOKU?'熟語':'単語')+'を削除</button></div>' : '')
+   + '</div>';
   h+='<div class="note">これまでに <b style="color:var(--miss);font-size:16px">'+a.length+'</b> 回 間違えています</div>';
   if(!a.length) h+='<div class="note">まだ記録はありません</div>';
   else{ h+='<ul class="hist">';
@@ -733,7 +801,7 @@ function openHist(id){
     h+='</ul>'; }
   h+='<div class="sh-act"><button class="big warn" data-hplus="1">＋ 今 間違えた</button></div>';
   shB.innerHTML=h; openSheet();
-  autoGrow(document.getElementById('edjp'));
+  autoGrow(document.getElementById('edjp')); autoGrow(document.getElementById('eden'));
 }
 /* --- グループ選択 --- */
 function gFilterBox(){
@@ -800,13 +868,43 @@ function openBulk(){
    + '<button class="big" data-gadd="bulk">＋ 作って表示中を全部入れる</button></div>';
   shB.innerHTML=h; openSheet(); applyGFilter();
 }
+/* --- 自作の単語を追加 --- */
+function openAdd(){
+  sheetMode='add'; dlgId=null;
+  var W=IS_SOKU?'熟語':'単語';
+  shT.textContent=W+'を追加'; shS.textContent='この単語帳にない'+W+'を自分で追加できます';
+  shB.innerHTML='<div class="ed"><div class="edlab">'+W+'（英語）</div>'
+   + '<textarea id="adden" rows="1" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>'
+   + '<div class="edlab" style="margin-top:10px">意味（改行OK）</div>'
+   + '<textarea id="addjp" rows="1"></textarea>'
+   + '<div class="edrow"><span class="edmsg" id="addmsg"></span></div></div>'
+   + '<div class="note">追加したものは上の <b>「自作」</b> で一覧できます。<br>'
+   + '自作のものだけ、カードの <b>「自作」</b> をタップして修正・削除できます。本の'+W+'は削除できません。</div>'
+   + '<div class="sh-act"><button class="big solid" data-m="doadd">追加する</button></div>';
+  openSheet();
+}
+function doAdd(){
+  var te=document.getElementById('adden'), tj=document.getElementById('addjp'), msg=document.getElementById('addmsg');
+  var en=te.value.trim(), jp=tj.value.trim();
+  if(!en){ msg.textContent='英語を入力してください'; return; }
+  if(!jp){ msg.textContent='意味を入力してください'; return; }
+  var low=en.toLowerCase(), dup=null;
+  for(var i=0;i<DATA.length;i++) if(DATA[i]._en===low){ dup=DATA[i]; break; }
+  if(dup && !confirm('「'+dup.en+'」はすでにあります（'+(dup.c?'自作 '+dup.k:(IS_SOKU?dup.t+' '+dup.no:'番号 '+dup.no))+'）。\nそれでも追加しますか？')) return;
+  var r=addCustom(en, jp);
+  listDirty=true;
+  te.value=''; tj.value=''; autoGrow(te); autoGrow(tj);
+  msg.textContent='追加しました：'+r.en+'（自作 '+r.k+'）';
+}
+
 /* --- メニュー --- */
 function openMenu(){
   sheetMode='menu';
   shT.textContent='メニュー'; shS.textContent=(dsMeta? dsMeta.title+'：'+DATA.length+'件 取り込み済み':'データ未取り込み');
   var st=missTotal();
   shB.innerHTML=
-     '<button class="mi" data-m="help">📖 <span>検索のコツ</span></button>'
+     '<button class="mi" data-m="add">＋ <span>'+(IS_SOKU?'熟語':'単語')+'を追加（自作 '+custom.length+'）</span></button>'
+   + '<button class="mi" data-m="help">📖 <span>検索のコツ</span></button>'
    + '<button class="mi" data-m="import">📥 <span>単語データを取り込む</span></button>'
    + '<button class="mi" data-m="export">💾 <span>バックアップを書き出す</span></button>'
    + '<button class="mi" data-m="restore">📂 <span>バックアップから戻す</span></button>'
@@ -836,7 +934,8 @@ function openHelp(){
   h+='</table><div class="note"><b>順不同</b>をONにすると <code>be in</code> で「be と in を両方含む」（順序自由）。<br>'
    + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。<br>'
    + '<b>組の管理</b>で「親」を選ぶとグループを入れ子にでき、親を選ぶと子の分もまとめて出ます。<br>'
-   + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。</div>';
+   + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。<br>'
+   + '<b>自作の'+(IS_SOKU?'熟語':'単語')+'</b>は ⋯ →「追加」から。「自作」チップで一覧、カードの「自作」をタップで修正・削除できます。</div>';
   shB.innerHTML=h; openSheet();
 }
 
@@ -899,6 +998,7 @@ function applyDataset(rows, meta, state){
   if(state){
     marks={}; (state.marks||[]).forEach(function(id){ marks[String(id)]=1; });
     miss=state.miss||{}; groups=state.groups||[]; gm=state.gm||{}; edits=state.edits||{};
+    custom=state.custom||[]; customSeq=state.customSeq||0; fixSeq();
     persist();
   }
   prep(rows); syncMiss(); refreshGroupSel(); updateSub(); render();
@@ -906,7 +1006,7 @@ function applyDataset(rows, meta, state){
 }
 function doExport(){
   var d={app:'eigo', kind:KIND, title:TITLE, ts:Date.now(),
-         rows:DATA.map(function(r){ return IS_SOKU?{id:r.id,n:r.n,t:r.t,no:r.no,en:r.en,jp:r._ojp}
+         rows:BOOK.map(function(r){ return IS_SOKU?{id:r.id,n:r.n,t:r.t,no:r.no,en:r.en,jp:r._ojp}
                                                   :{id:r.id,no:r.no,en:r.en,jp:r._ojp,s:r.s}; }),
          state:payload()};
   var blob=new Blob([JSON.stringify(d)],{type:'application/json'});
@@ -925,8 +1025,9 @@ function handleFile(f, wantRows){
       if(obj.kind && obj.kind!==KIND && !confirm('このファイルは「'+(obj.title||obj.kind)+'」用のようです。取り込みますか？')) return;
       if(obj.rows && obj.rows.length){ if(applyDataset(obj.rows, obj, st)) alert('取り込みました。'+obj.rows.length+'件'); }
       else if(st){ marks={}; (st.marks||[]).forEach(function(id){ marks[String(id)]=1; });
-        miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{}; edits=st.edits||{}; applyEdits();
-        persist(); syncMiss(); refreshGroupSel(); render();
+        miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{}; edits=st.edits||{};
+        custom=st.custom||[]; customSeq=st.customSeq||0; fixSeq();
+        rebuildData(); persist(); syncMiss(); refreshGroupSel(); updateSub(); render();
         alert('記録を戻しました。★'+markCount()+'件'); }
       closeSheet(); return;
     }
@@ -971,6 +1072,7 @@ ovl.addEventListener('click', function(e){
     if(!flushEdit()){ var m0=document.getElementById('edmsg'); if(m0) m0.textContent='保存済みです ✓'; }
     blurInputs(); return;
   }
+  if(t.id==='eddel' && dlgId){ deleteCustom(dlgId); return; }
   if(t.id==='edreset' && dlgId){ clearTimeout(editTimer); blurInputs(); saveEdit(dlgId, BYID[dlgId]._ojp); openHist(dlgId); return; }
   if((v=t.getAttribute('data-hx'))!==null && v!==undefined && dlgId){
     flushEdit();
@@ -1023,6 +1125,8 @@ ovl.addEventListener('click', function(e){
   }
   var m=t.getAttribute('data-m'); if(!m && t.parentNode.getAttribute) m=t.parentNode.getAttribute('data-m');
   if(m==='help'){ openHelp(); return; }
+  if(m==='add'){ openAdd(); return; }
+  if(m==='doadd'){ doAdd(); return; }
   if(m==='import'){ openImport(); return; }
   if(m==='export'){ doExport(); return; }
   if(m==='restore'){ openImport(); return; }
@@ -1050,7 +1154,8 @@ ovl.addEventListener('change', function(e){
 });
 ovl.addEventListener('input', function(e){
   var t=e.target;
-  if(t.id==='edjp'){
+  if(t.id==='adden' || t.id==='addjp'){ autoGrow(t); var am=document.getElementById('addmsg'); if(am) am.textContent=''; return; }
+  if(t.id==='edjp' || t.id==='eden'){
     autoGrow(t);
     var m=document.getElementById('edmsg'); if(m) m.textContent='入力中…';
     clearTimeout(editTimer); editTimer=setTimeout(flushEdit, 700);
@@ -1087,10 +1192,11 @@ document.querySelectorAll('.chips [data-f]').forEach(function(b){
 
 function updateSub(){
   if(!DATA.length){ subEl.textContent='データ未取り込み'; return; }
-  if(IS_SOKU){ var a=0,b=0; DATA.forEach(function(r){ r.t==='熟語'?a++:b++; });
-    subEl.textContent='熟語'+a+'・構文'+b; }
-  else { var s=0; DATA.forEach(function(r){ if(r.s) s++; });
-    subEl.textContent='全'+DATA.length+'語・新'+s; }
+  var mine=custom.length;
+  if(IS_SOKU){ var a=0,b=0; BOOK.forEach(function(r){ r.t==='熟語'?a++:b++; });
+    subEl.textContent='熟語'+a+'・構文'+b+(mine?'・自作'+mine:''); }
+  else { var s=0; BOOK.forEach(function(r){ if(r.s) s++; });
+    subEl.textContent='全'+BOOK.length+'語・新'+s+(mine?'・自作'+mine:''); }
 }
 
 /* ================= 起動 ================= */
