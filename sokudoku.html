@@ -13,8 +13,8 @@
 <link rel="icon" href="icon-soku-180.png">
 <script>(function(){try{var t=localStorage.getItem('soku.theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
 <style>
-:root{--mine-bg:#f3e8ff;--mine-fg:#7e22ce;--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--muted:#6b7683;--border:#e3e7ec;--accent:#2563eb;--accent-soft:#eaf1ff;--mark:#fff2a8;--star:#eab308;--miss:#dc2626;--idiom-bg:#e8f0ff;--idiom-fg:#1d4ed8;--kobun-bg:#fff2e0;--kobun-fg:#b45309;--num-bg:#eef1f5;--num-fg:#475569;--shin-bg:#dcfce7;--shin-fg:#15803d;}
-:root[data-theme="dark"]{--mine-bg:#2e1a47;--mine-fg:#d8b4fe;--bg:#0b0d10;--panel:#14181d;--text:#e6ebf2;--muted:#9aa6b4;--border:#262c34;--accent:#5b9bff;--accent-soft:#16202e;--mark:#5c5015;--star:#fbbf24;--miss:#f87171;--idiom-bg:#16263f;--idiom-fg:#8fbcff;--kobun-bg:#33260f;--kobun-fg:#f0b968;--num-bg:#222c38;--num-fg:#aab6c4;--shin-bg:#14331f;--shin-fg:#6ee7a0;}
+:root{--hide-bg:#cbd5e1;--hide-rv:#eef2ff;--mine-bg:#f3e8ff;--mine-fg:#7e22ce;--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--muted:#6b7683;--border:#e3e7ec;--accent:#2563eb;--accent-soft:#eaf1ff;--mark:#fff2a8;--star:#eab308;--miss:#dc2626;--idiom-bg:#e8f0ff;--idiom-fg:#1d4ed8;--kobun-bg:#fff2e0;--kobun-fg:#b45309;--num-bg:#eef1f5;--num-fg:#475569;--shin-bg:#dcfce7;--shin-fg:#15803d;}
+:root[data-theme="dark"]{--hide-bg:#3b4554;--hide-rv:#1e2633;--mine-bg:#2e1a47;--mine-fg:#d8b4fe;--bg:#0b0d10;--panel:#14181d;--text:#e6ebf2;--muted:#9aa6b4;--border:#262c34;--accent:#5b9bff;--accent-soft:#16202e;--mark:#5c5015;--star:#fbbf24;--miss:#f87171;--idiom-bg:#16263f;--idiom-fg:#8fbcff;--kobun-bg:#33260f;--kobun-fg:#f0b968;--num-bg:#222c38;--num-fg:#aab6c4;--shin-bg:#14331f;--shin-fg:#6ee7a0;}
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0; height:100%; overflow:hidden; overscroll-behavior:none}
@@ -59,6 +59,29 @@ main{flex:1; overflow-y:auto;
 .badge.構文{background:var(--kobun-bg); color:var(--kobun-fg)}
 .badge.num{background:var(--num-bg); color:var(--num-fg)}
 .badge.自作{background:var(--mine-bg); color:var(--mine-fg); cursor:pointer}
+.hid{color:transparent !important; background:var(--hide-bg); border-radius:4px; cursor:pointer;
+  -webkit-box-decoration-break:clone; box-decoration-break:clone; -webkit-user-select:none; user-select:none}
+.hid mark{background:transparent !important; color:transparent !important}
+.hid.rv{color:inherit !important; background:var(--hide-rv)}
+.hid.rv mark{background:var(--mark) !important; color:inherit !important}
+.mk-hint{font-size:12.5px; color:var(--muted); border:1px dashed var(--border); border-radius:9px;
+  padding:8px 10px; margin-bottom:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.mk-modes{display:flex; gap:6px; margin-bottom:6px}
+.mk-note{font-size:12px; color:var(--muted); margin:4px 0 6px; line-height:1.6}
+.mk-lab{font-size:11.5px; color:var(--muted); margin:12px 0 5px}
+.mk-line{display:flex; flex-wrap:wrap; align-items:center; row-gap:8px; padding:10px; border:1px solid var(--border);
+  border-radius:10px; background:var(--bg); touch-action:none; -webkit-user-select:none; user-select:none;
+  font-size:18px; line-height:1.6}
+.mk-line .mt{padding:4px 8px; margin:0 2px; border-radius:7px; border:1px solid var(--border); background:var(--panel)}
+.mk-line.ch .mt{padding:4px 3px; margin:0; border-color:transparent; background:transparent; min-width:.7em; text-align:center}
+.mk-line .mt.on{background:var(--hide-bg); border-color:var(--hide-bg); color:var(--muted)}
+.mk-line .mt.part{box-shadow:inset 0 -4px 0 var(--hide-bg)}
+.mk-line .mt.drag{outline:2px solid var(--accent); outline-offset:-1px}
+.mk-line .msp{white-space:pre; color:var(--muted)}
+.mk-pv{padding:10px; border:1px solid var(--border); border-radius:10px; font-size:15px; line-height:1.7; white-space:pre-wrap}
+.mk-pv-en{font-weight:700; font-size:16px}
+.mk-nav{display:flex; gap:8px}
+.mk-nav .gbtn{flex:1; padding:11px 6px; font-size:14px}
 .gbtn.danger{border-color:var(--miss); color:var(--miss)}
 .shin{font-size:9.5px; font-weight:700; padding:0 5px; border-radius:4px; flex:none;
   background:var(--shin-bg); color:var(--shin-fg)}
@@ -181,6 +204,9 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <button class="chip active" data-f="all">すべて</button><button class="chip" data-f="熟語">熟語</button><button class="chip" data-f="構文">構文</button><button class="chip" data-f="自作">自作</button>
     <button class="chip" id="markbtn">★のみ</button>
     <button class="chip" id="andbtn">順不同 OFF</button>
+    <button class="chip" id="hidejp">訳を隠す</button>
+    <button class="chip" id="hideen">英語を隠す</button>
+    <button class="chip" id="hidepart">部分を隠す</button>
     <select class="chip" id="gsel"><option value="">組：全部</option></select>
     <button class="chip" id="gbulk">一括</button>
     <button class="chip" id="gmgr">組の管理</button>
@@ -366,11 +392,185 @@ function hlMulti(text, needles){
   return out+esc(text.slice(last));
 }
 
+/* ===================== 隠す（赤シート） =====================
+   HIDE.jp/en … 訳・英語をすべて隠す / HIDE.part … 自分で選んだ部分を隠す
+   masks[id] = {en:{t:その時の英語, r:[[開始,終了],...]}, jp:{...}}
+   （文字の位置で覚えるので、あとで文章が変わった場合はその指定は使わない） */
+var HIDE={jp:false, en:false, part:false}, REVEAL={};
+function loadHide(){
+  try{ var h=JSON.parse(localStorage.getItem(NS+'.hide')||'null');
+    if(h){ HIDE.jp=!!h.jp; HIDE.en=!!h.en; HIDE.part=!!h.part; } }catch(e){}
+}
+function saveHide(){ try{ localStorage.setItem(NS+'.hide', JSON.stringify(HIDE)); }catch(e){} }
+function hideRanges(r, f){
+  var text=String(f==='en'?r.en:r.jp);
+  if((f==='en' && HIDE.en) || (f==='jp' && HIDE.jp)) return text.length ? [[0,text.length]] : [];
+  if(HIDE.part){ var m=masks[r.id]; if(m && m[f] && m[f].t===text && m[f].r) return m[f].r; }
+  return [];
+}
+function markFlags(text, needles){
+  var n=text.length, f=new Array(n), i;
+  for(i=0;i<n;i++) f[i]=0;
+  var arr=[]; for(i=0;i<needles.length;i++) if(needles[i]) arr.push(escRe(needles[i]));
+  if(!arr.length) return f;
+  arr.sort(function(a,b){ return b.length-a.length; });
+  var re; try{ re=new RegExp('('+arr.join('|')+')','gi'); }catch(e){ return f; }
+  var m;
+  while((m=re.exec(text))!==null){
+    for(var j=m.index;j<m.index+m[0].length;j++) f[j]=1;
+    if(m[0].length===0) re.lastIndex++;
+  }
+  return f;
+}
+/* 検索の強調(mark)と隠す部分(hid)を同時に描く。隠す部分が無ければ従来どおり */
+function renderText(text, needles, ranges, kp){
+  text=String(text); needles=needles||[];
+  if(!ranges || !ranges.length) return hlMulti(text, needles);
+  var n=text.length, mk=markFlags(text, needles), hd=new Array(n), i, j;
+  for(i=0;i<n;i++) hd[i]=-1;
+  for(var q=0;q<ranges.length;q++){
+    var a=Math.max(0, ranges[q][0]|0), b=Math.min(n, ranges[q][1]|0);
+    for(j=a;j<b;j++) hd[j]=q;
+  }
+  var out=''; i=0;
+  while(i<n){
+    var h=hd[i]; j=i; while(j<n && hd[j]===h) j++;
+    var inner='', p=i;
+    while(p<j){ var mm=mk[p], z=p; while(z<j && mk[z]===mm) z++;
+      var seg=esc(text.slice(p,z)); inner+= mm ? '<mark>'+seg+'</mark>' : seg; p=z; }
+    if(h>=0){ var k=kp+'|'+h;
+      out+='<span class="hid'+(REVEAL[k]?' rv':'')+'" data-act="peek" data-k="'+k+'">'+inner+'</span>'; }
+    else out+=inner;
+    i=j;
+  }
+  return out;
+}
+function togglePeek(el){
+  var k=el.getAttribute('data-k'); if(!k) return;
+  if(REVEAL[k]) delete REVEAL[k]; else REVEAL[k]=1;
+  el.classList.toggle('rv', !!REVEAL[k]);
+}
+function rangesFromBools(b){
+  var out=[], i=0, n=b.length;
+  while(i<n){ if(b[i]){ var j=i; while(j<n && b[j]) j++; out.push([i,j]); i=j; } else i++; }
+  return out;
+}
+function boolsFromRanges(rs, n){
+  var b=new Array(n), i; for(i=0;i<n;i++) b[i]=false;
+  (rs||[]).forEach(function(r){ for(var j=Math.max(0,r[0]); j<Math.min(n,r[1]); j++) b[j]=true; });
+  return b;
+}
+/* 隠す場所を選ぶ画面の区切り方：単語ごと / 1文字ずつ */
+function maskTokens(text, mode, f){
+  var out=[], i;
+  if(mode==='char'){
+    for(i=0;i<text.length;i++){ var c=text.charAt(i); out.push({s:i, e:i+1, txt:c, sp:/\s/.test(c)}); }
+    return out;
+  }
+  var re = (f==='en') ? /\s+/g : /[\s、，,・／\/]+/g, last=0, m;
+  while((m=re.exec(text))!==null){
+    if(m.index>last) out.push({s:last, e:m.index, txt:text.slice(last,m.index), sp:false});
+    out.push({s:m.index, e:m.index+m[0].length, txt:m[0], sp:true});
+    last=m.index+m[0].length;
+    if(m[0].length===0) re.lastIndex++;
+  }
+  if(last<text.length) out.push({s:last, e:text.length, txt:text.slice(last), sp:false});
+  return out;
+}
+var ME={id:null, mode:'word', b:{en:[], jp:[]}};
+try{ var _mm=localStorage.getItem(NS+'.maskmode'); if(_mm==='char'||_mm==='word') ME.mode=_mm; }catch(e){}
+function meSetMode(m){ ME.mode=m; try{ localStorage.setItem(NS+'.maskmode', m); }catch(e){} }
+function meOpen(id){
+  var r=BYID[id]; ME.id=id;
+  var m=masks[id]||{}, en=String(r.en), jp=String(r.jp);
+  ME.b.en=boolsFromRanges(m.en && m.en.t===en ? m.en.r : [], en.length);
+  ME.b.jp=boolsFromRanges(m.jp && m.jp.t===jp ? m.jp.r : [], jp.length);
+}
+function meSave(){
+  var r=BYID[ME.id]; if(!r) return;
+  var en=rangesFromBools(ME.b.en), jp=rangesFromBools(ME.b.jp), m={};
+  if(en.length) m.en={t:String(r.en), r:en};
+  if(jp.length) m.jp={t:String(r.jp), r:jp};
+  if(m.en || m.jp) masks[ME.id]=m; else delete masks[ME.id];
+}
+function meToggle(f, a, b){
+  var arr=ME.b[f], all=true, i;
+  for(i=a;i<b;i++) if(!arr[i]){ all=false; break; }
+  for(i=a;i<b;i++) arr[i]=!all;
+}
+function meClear(){ var i; for(i=0;i<ME.b.en.length;i++) ME.b.en[i]=false; for(i=0;i<ME.b.jp.length;i++) ME.b.jp[i]=false; }
+function meLineHTML(f){
+  var r=BYID[ME.id], text=String(f==='en'?r.en:r.jp), toks=maskTokens(text, ME.mode, f), b=ME.b[f], h='';
+  for(var x=0;x<toks.length;x++){
+    var t=toks[x];
+    if(t.sp){ h+='<span class="msp">'+esc(t.txt)+'</span>'; continue; }
+    var c=0; for(var i=t.s;i<t.e;i++) if(b[i]) c++;
+    h+='<span class="mt'+(c===0?'':(c===t.e-t.s?' on':' part'))+'" data-f="'+f+'" data-s="'+t.s+'" data-e="'+t.e+'">'+esc(t.txt)+'</span>';
+  }
+  return '<div class="mk-line'+(ME.mode==='char'?' ch':'')+'" data-f="'+f+'">'+h+'</div>';
+}
+function mePreviewHTML(){
+  var r=BYID[ME.id];
+  return '<div class="mk-pv-en">'+renderText(r.en, [], rangesFromBools(ME.b.en), 'pv|en')+'</div>'
+       + '<div class="mk-pv-jp">'+renderText(r.jp, [], rangesFromBools(ME.b.jp), 'pv|jp')+'</div>';
+}
+function meBodyHTML(actClass){
+  var h='';
+  if(!HIDE.part) h+='<div class="mk-hint"><span>いまは一覧では隠れません。</span>'
+                  + '<button class="gbtn" data-mon="1">「部分を隠す」をONにする</button></div>';
+  h+='<div class="mk-modes"><button class="chip'+(ME.mode==='word'?' active':'')+'" data-mm="word">単語ごと</button>'
+    + '<button class="chip'+(ME.mode==='char'?' active':'')+'" data-mm="char">1文字ずつ</button></div>'
+    + '<div class="mk-note">タップで選ぶ／もう一度タップで戻す。<b>なぞると</b>まとめて選べます。何か所でもOK。</div>'
+    + '<div class="mk-lab">英語</div><div id="mk-en">'+meLineHTML('en')+'</div>'
+    + '<div class="mk-lab">意味</div><div id="mk-jp">'+meLineHTML('jp')+'</div>'
+    + '<div class="mk-lab">隠したときの見え方</div><div class="mk-pv" id="mk-pv">'+mePreviewHTML()+'</div>'
+    + '<div class="'+actClass+'"><div class="mk-nav"><button class="gbtn" data-mnav="-1">◀ 前</button>'
+    + '<button class="gbtn" data-mclear="1">全部戻す</button><button class="gbtn" data-mnav="1">次 ▶</button></div></div>';
+  return h;
+}
+function meRefresh(root){
+  var a=root.querySelector('#mk-en'), b=root.querySelector('#mk-jp'), c=root.querySelector('#mk-pv');
+  if(a) a.innerHTML=meLineHTML('en'); if(b) b.innerHTML=meLineHTML('jp'); if(c) c.innerHTML=mePreviewHTML();
+}
+function meNeighbor(ids, id, dir){
+  for(var i=0;i<ids.length;i++) if(String(ids[i])===String(id)){ var j=i+dir; return (j>=0 && j<ids.length) ? String(ids[j]) : null; }
+  return null;
+}
+/* タップ＝1つ、なぞる＝範囲。指でもマウスでも */
+function meAttach(root, onChange){
+  var drag=null;
+  function tok(el){ while(el && el!==root && !(el.classList && el.classList.contains('mt'))) el=el.parentNode;
+    return (el && el!==root) ? el : null; }
+  function paint(){
+    var els=root.querySelectorAll('.mt');
+    for(var i=0;i<els.length;i++){ var e=els[i];
+      var inR=!!drag && e.getAttribute('data-f')===drag.f && (+e.getAttribute('data-s'))>=drag.a && (+e.getAttribute('data-e'))<=drag.b;
+      e.classList.toggle('drag', inR); }
+  }
+  function start(el){ drag={f:el.getAttribute('data-f'), s0:+el.getAttribute('data-s'), e0:+el.getAttribute('data-e')};
+    drag.a=drag.s0; drag.b=drag.e0; paint(); }
+  function move(x,y){
+    if(!drag) return;
+    var el=tok(document.elementFromPoint(x,y));
+    if(!el || el.getAttribute('data-f')!==drag.f) return;
+    drag.a=Math.min(drag.s0, +el.getAttribute('data-s')); drag.b=Math.max(drag.e0, +el.getAttribute('data-e')); paint();
+  }
+  function end(){ if(!drag) return; var d=drag; drag=null; meToggle(d.f, d.a, d.b); onChange(); }
+  root.addEventListener('touchstart', function(e){ var el=tok(e.target); if(!el) return; e.preventDefault(); start(el); }, {passive:false});
+  root.addEventListener('touchmove', function(e){ if(!drag) return; e.preventDefault(); var p=e.touches[0]; move(p.clientX, p.clientY); }, {passive:false});
+  root.addEventListener('touchend', function(e){ if(!drag) return; e.preventDefault(); end(); }, {passive:false});
+  root.addEventListener('touchcancel', function(){ drag=null; paint(); });
+  root.addEventListener('mousedown', function(e){ var el=tok(e.target); if(!el) return; e.preventDefault(); start(el); });
+  document.addEventListener('mousemove', function(e){ if(drag) move(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', function(){ end(); });
+}
+
 
 /* ================= 状態 ================= */
 var DATA=[], dsMeta=null;
 var marks={}, miss={}, groups=[], gm={}, edits={}, GS=null;
 var custom=[], customSeq=0, BOOK=[];   /* custom=自分で追加した単語、BOOK=本の単語 */
+var masks={};                          /* 隠す場所の指定 */
 var filter='all', andMode=false, markOnly=false, sortMode='def', gFilter='';
 var GCOLORS=['#ef4444','#f59e0b','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
 var filtered=[], rendered=0, CHUNK=120, gPickId=null, dlgId=null, gDlgFilter='', sheetMode='';
@@ -392,13 +592,14 @@ var listEl=document.getElementById('list'), emptyEl=document.getElementById('emp
 /* ================= 保存 ================= */
 function payload(){ var a=[]; for(var k in marks) if(marks[k]) a.push(String(k));
   return {v:1, ts:Date.now(), marks:a, miss:miss, groups:groups, gm:gm, edits:edits,
-          custom:custom, customSeq:customSeq}; }
+          custom:custom, customSeq:customSeq, masks:masks}; }
 function persist(){
   var p=payload();
   lsSet('marks', JSON.stringify(p.marks)); lsSet('miss', JSON.stringify(p.miss));
   lsSet('groups',JSON.stringify(p.groups)); lsSet('gm', JSON.stringify(p.gm));
   lsSet('edits', JSON.stringify(p.edits));
   lsSet('custom', JSON.stringify(p.custom)); lsSet('customSeq', String(p.customSeq));
+  lsSet('masks', JSON.stringify(p.masks));
   lsSet('ts', String(p.ts)); GS=null; GIDX=null;
 }
 function loadState(){
@@ -409,6 +610,7 @@ function loadState(){
   try{ edits=JSON.parse(lsGet('edits','{}'))||{}; }catch(e){ edits={}; }
   try{ custom=JSON.parse(lsGet('custom','[]'))||[]; }catch(e){ custom=[]; }
   customSeq=parseInt(lsGet('customSeq','0'),10)||0;
+  try{ masks=JSON.parse(lsGet('masks','{}'))||{}; }catch(e){ masks={}; }
   fixSeq();
 }
 function fixSeq(){ for(var i=0;i<custom.length;i++) if((custom[i].k||0)>customSeq) customSeq=custom[i].k; }
@@ -477,7 +679,7 @@ function deleteCustom(id){
   if(!confirm('「'+r.en+'」を削除します。\n★・間違いの記録・グループからも消えます。元に戻せません。')) return false;
   clearTimeout(editTimer); editTimer=null;
   custom=custom.filter(function(c){ return c.id!==id; });
-  delete marks[id]; delete miss[id]; delete gm[id]; delete edits[id];
+  delete marks[id]; delete miss[id]; delete gm[id]; delete edits[id]; delete masks[id];
   dlgId=null;
   rebuildData(); persist(); refreshGroupSel(); updateSub();
   listDirty=true; closeSheet();
@@ -588,9 +790,9 @@ function card(r, needles){
   return '<div class="card" data-id="'+r.id+'">'
    + '<div class="r1">'+badge+'<span class="gdots">'+dots+'</span>'
    + (HAS_TTS ? '<button class="spk" data-act="speak" aria-label="発音を聞く">'+SPK_SVG+'</button>' : '')
-   + '<span class="en">'+hlMulti(r.en,needles)+'</span>'
+   + '<span class="en">'+renderText(r.en,needles,hideRanges(r,'en'),r.id+'|en')+'</span>'
    + '<button class="star'+(on?' on':'')+'" data-act="star">'+(on?'★':'☆')+'</button></div>'
-   + '<div class="r2"><span class="jp">'+hlMulti(r.jp,needles)+'</span>'
+   + '<div class="r2"><span class="jp">'+renderText(r.jp,needles,hideRanges(r,'jp'),r.id+'|jp')+'</span>'
    + '<span class="ms">'
    + '<button data-act="dec"'+(c?'':' disabled')+'>−</button>'
    + '<button class="cnt'+(c?' has':'')+'" data-act="hist">'+c+'</button>'
@@ -753,6 +955,18 @@ function openSheet(){
   }
   if(hadKb && !ovl.classList.contains('open')) setTimeout(show, 300); else show();
 }
+function openMask(id){
+  flushEdit();
+  dlgId=null; sheetMode='mask';
+  meOpen(String(id));
+  var pos=-1; for(var i=0;i<filtered.length;i++) if(String(filtered[i].id)===String(id)){ pos=i; break; }
+  shT.textContent=BYID[id].en;
+  shS.textContent='隠す場所を選ぶ'+(pos>=0?'（'+(pos+1)+' / '+filtered.length+'）':'');
+  shB.innerHTML=meBodyHTML('sh-act');
+  openSheet();
+}
+function maskChanged(){ meSave(); persist(); updateCard(ME.id); meRefresh(shB); }
+meAttach(shB, maskChanged);
 function closeSheet(){
   flushEdit();
   blurInputs();
@@ -808,6 +1022,7 @@ function openHist(id){
    + '<div class="edrow"><button class="gbtn" id="edsave">保存</button>'
    + (!r.c && edits[id]?'<button class="gbtn" id="edreset">元に戻す</button>':'')
    + '<span class="edmsg" id="edmsg">改行OK・入力すると自動で保存されます</span></div>'
+   + '<div class="edrow"><button class="gbtn" id="edmask">✂ 隠す場所を選ぶ</button></div>'
    + (r.c ? '<div class="edrow"><button class="gbtn danger" id="eddel">この'+(IS_SOKU?'熟語':'単語')+'を削除</button></div>' : '')
    + '</div>';
   h+='<div class="note">これまでに <b style="color:var(--miss);font-size:16px">'+a.length+'</b> 回 間違えています</div>';
@@ -1040,6 +1255,8 @@ function openHelp(){
    + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。<br>'
    + '<b>自作の'+(IS_SOKU?'熟語':'単語')+'</b>は ⋯ →「追加」から。「自作」チップで一覧、カードの「自作」をタップで修正・削除できます。'
    + (HAS_TTS ? '<br><b>発音</b>はカードの 🔊 で。音量・速さ・声は ⋯ →「発音の設定」で変えられます。' : '')
+   + '<br><b>隠して覚える</b>：「訳を隠す」「英語を隠す」で全部、「部分を隠す」で自分で選んだ所だけ隠れます。隠れた所は<b>タップで見えます</b>。'
+   + '隠す場所は、間違い回数の数字をタップ →「✂ 隠す場所を選ぶ」で。単語ごと／1文字ずつ、なぞるとまとめて選べます。'
    + '</div>';
   shB.innerHTML=h; openSheet();
 }
@@ -1103,7 +1320,7 @@ function applyDataset(rows, meta, state){
   if(state){
     marks={}; (state.marks||[]).forEach(function(id){ marks[String(id)]=1; });
     miss=state.miss||{}; groups=state.groups||[]; gm=state.gm||{}; edits=state.edits||{};
-    custom=state.custom||[]; customSeq=state.customSeq||0; fixSeq();
+    custom=state.custom||[]; customSeq=state.customSeq||0; fixSeq(); masks=state.masks||{};
     persist();
   }
   prep(rows); syncMiss(); refreshGroupSel(); updateSub(); render();
@@ -1131,7 +1348,7 @@ function handleFile(f, wantRows){
       if(obj.rows && obj.rows.length){ if(applyDataset(obj.rows, obj, st)) alert('取り込みました。'+obj.rows.length+'件'); }
       else if(st){ marks={}; (st.marks||[]).forEach(function(id){ marks[String(id)]=1; });
         miss=st.miss||{}; groups=st.groups||[]; gm=st.gm||{}; edits=st.edits||{};
-        custom=st.custom||[]; customSeq=st.customSeq||0; fixSeq();
+        custom=st.custom||[]; customSeq=st.customSeq||0; fixSeq(); masks=st.masks||{};
         rebuildData(); persist(); syncMiss(); refreshGroupSel(); updateSub(); render();
         alert('記録を戻しました。★'+markCount()+'件'); }
       closeSheet(); return;
@@ -1144,8 +1361,11 @@ function handleFile(f, wantRows){
 
 /* ================= 操作 ================= */
 listEl.addEventListener('click', function(e){
-  var t=e.target; if(!t.getAttribute) return;
-  var act=t.getAttribute('data-act'); if(!act) return;
+  var t=e.target;
+  while(t && t!==listEl && !(t.getAttribute && t.getAttribute('data-act'))) t=t.parentNode;
+  if(!t || t===listEl) return;
+  var act=t.getAttribute('data-act');
+  if(act==='peek'){ togglePeek(t); return; }
   var cardEl=t; while(cardEl && !cardEl.getAttribute('data-id')) cardEl=cardEl.parentNode;
   if(!cardEl) return;
   var id=cardEl.getAttribute('data-id'), r=BYID[id];
@@ -1174,6 +1394,15 @@ listEl.addEventListener('click', function(e){
 ovl.addEventListener('click', function(e){
   var t=e.target; if(!t.getAttribute) return;
   var v;
+  if(t.id==='edmask' && dlgId){ openMask(dlgId); return; }
+  if((v=t.getAttribute('data-mm'))){ meSetMode(v); openMask(ME.id); return; }
+  if((v=t.getAttribute('data-mnav'))){
+    var nx=meNeighbor(filtered.map(function(x){ return x.id; }), ME.id, +v);
+    if(nx!==null) openMask(nx);
+    return;
+  }
+  if(t.getAttribute('data-mclear')){ meClear(); maskChanged(); return; }
+  if(t.getAttribute('data-mon')){ HIDE.part=true; REVEAL={}; saveHide(); refreshHideChips(); listDirty=true; openMask(ME.id); return; }
   if(t.id==='edsave' && dlgId){
     if(!flushEdit()){ var m0=document.getElementById('edmsg'); if(m0) m0.textContent='保存済みです ✓'; }
     blurInputs(); return;
@@ -1301,6 +1530,14 @@ document.querySelectorAll('.chips [data-f]').forEach(function(b){
   });
 });
 
+function refreshHideChips(){
+  ['jp','en','part'].forEach(function(k){ var b=document.getElementById('hide'+k); if(b) b.classList.toggle('active', !!HIDE[k]); });
+}
+['jp','en','part'].forEach(function(k){
+  var b=document.getElementById('hide'+k);
+  if(b) b.addEventListener('click', function(){ HIDE[k]=!HIDE[k]; REVEAL={}; saveHide(); refreshHideChips(); render({keep:true}); });
+});
+
 function updateSub(){
   if(!DATA.length){ subEl.textContent='データ未取り込み'; return; }
   var mine=custom.length;
@@ -1313,6 +1550,7 @@ function updateSub(){
 /* ================= 起動 ================= */
 (function boot(){
   loadState();
+  loadHide(); refreshHideChips();
   andMode=lsGet('andMode','0')==='1';
   andBtn.textContent='順不同 '+(andMode?'ON':'OFF'); andBtn.classList.toggle('active',andMode);
   sortMode=lsGet('sort','def'); sortSel.value=sortMode;
