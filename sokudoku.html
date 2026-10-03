@@ -145,8 +145,9 @@ mark{background:var(--mark); color:inherit; border-radius:3px; padding:0 1px}
 .ed textarea{width:100%; min-height:0; background:var(--panel); border:1px solid var(--border);
   color:var(--text); border-radius:8px; padding:9px; font-size:16px; line-height:1.5;
   resize:none; overflow:hidden; font-family:inherit; display:block}
-.edrow{display:flex; align-items:center; gap:8px; margin-top:8px}
+.edrow{display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap}
 .edmsg{font-size:12px; color:var(--accent)}
+.edorig{font-size:11.5px; color:var(--muted); margin-top:4px}
 .gcount{margin-left:auto; color:var(--muted); font-size:12px}
 .gm-row{display:flex; align-items:center; gap:7px; padding:9px 0; border-bottom:1px solid var(--border)}
 .gm-row input[type=text]{flex:1; min-width:0; background:var(--bg); border:1px solid var(--border);
@@ -396,6 +397,36 @@ function hlMulti(text, needles){
    HIDE.jp/en … 訳・英語をすべて隠す / HIDE.part … 自分で選んだ部分を隠す
    masks[id] = {en:{t:その時の英語, r:[[開始,終了],...]}, jp:{...}}
    （文字の位置で覚えるので、あとで文章が変わった場合はその指定は使わない） */
+/* ===================== 意味を ①② に分ける（速読英熟語） =====================
+   区切り＝カッコの外にあるスペース（データ上、カッコの中にスペースは無い）。
+   すでに①②の形でも、番号と改行を外してから分け直すので、何度押しても同じ結果になる */
+var CIRC='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+function splitMeanings(jp){
+  var s=String(jp).replace(/^[ \t　]*[①-⑳][ \t　]*/gm,'').replace(/\r?\n+/g,' ');
+  var OPEN='（(〔[【「『', CLOSE='）)〕]】」』', parts=[], cur='', d=0;
+  for(var i=0;i<s.length;i++){
+    var ch=s.charAt(i);
+    if(OPEN.indexOf(ch)>=0) d++;
+    else if(CLOSE.indexOf(ch)>=0) d=Math.max(0,d-1);
+    if((ch===' '||ch==='　') && d===0){ if(cur.trim()) parts.push(cur.trim()); cur=''; }
+    else cur+=ch;
+  }
+  if(cur.trim()) parts.push(cur.trim());
+  return parts;
+}
+function numberMeanings(jp){
+  var p=splitMeanings(jp);
+  if(p.length<2) return null;
+  return p.map(function(x,i){ return (i<20 ? CIRC.charAt(i) : '('+(i+1)+')')+x; }).join('\n');
+}
+function applyNumbering(){
+  var ta=document.getElementById('edjp'); if(!ta) return {changed:false, msg:''};
+  var out=numberMeanings(ta.value);
+  if(out===null) return {changed:false, msg:'意味が1つなので分けられません'};
+  if(out===ta.value) return {changed:false, msg:'すでにこの形です'};
+  ta.value=out; flushEdit();
+  return {changed:true, msg:'①②の形にしました（「訳を元に戻す」で戻せます）'};
+}
 var HIDE={jp:false, en:false, part:false}, REVEAL={};
 function loadHide(){
   try{ var h=JSON.parse(localStorage.getItem(NS+'.hide')||'null');
@@ -467,7 +498,7 @@ function maskTokens(text, mode, f){
     for(i=0;i<text.length;i++){ var c=text.charAt(i); out.push({s:i, e:i+1, txt:c, sp:/\s/.test(c)}); }
     return out;
   }
-  var re = (f==='en') ? /\s+/g : /[\s、，,・／\/]+/g, last=0, m;
+  var re = (f==='en') ? /\s+/g : /[\s、，,・／\/\u2460-\u2473]+/g, last=0, m;
   while((m=re.exec(text))!==null){
     if(m.index>last) out.push({s:last, e:m.index, txt:text.slice(last,m.index), sp:false});
     out.push({s:m.index, e:m.index+m[0].length, txt:m[0], sp:true});
@@ -617,6 +648,7 @@ function fixSeq(){ for(var i=0;i<custom.length;i++) if((custom[i].k||0)>customSe
 function prepOne(r,i){
   /* 何度呼んでも同じ結果になるよう、元の訳(_ojp)を先に確定してから計算する */
   if(r._ojp===undefined) r._ojp=String(r.jp); else r.jp=r._ojp;
+  if(r._oen===undefined) r._oen=String(r.en); else r.en=r._oen;
   r._i=i; r._en=String(r.en).toLowerCase(); r._jp=String(r.jp).toLowerCase();
   r._w=String(r.en).split(/\s+/).map(normWord);
   r._v=variants(r.en);
@@ -641,19 +673,36 @@ function prep(rows){
 }
 var BYID={};
 function syncMiss(){ DATA.forEach(function(r){ r._miss=(miss[r.id]||[]).length; }); }
+/* 英語を変えたら、検索用の下ごしらえも作り直す */
+function recalcEn(r){
+  var en=String(r.en);
+  r._en=en.toLowerCase(); r._w=en.split(/\s+/).map(normWord); r._v=variants(en);
+  r._len=(en.match(/[A-Za-z]/g)||[]).length; r._wc=r._w.filter(function(x){return x.length>0;}).length;
+}
+/* 本の単語の編集は {jp:訳, en:英語} の差分で持つ。どちらも元通りなら記録ごと消す */
+function setEdit(id, e){ if(e.jp===undefined && e.en===undefined) delete edits[id]; else edits[id]=e; }
 function applyEdits(){
   for(var id in edits){
     var r=BYID[id]; if(!r) continue;
     var e=edits[id];
     if(e && typeof e.jp==='string'){ r.jp=e.jp; r._jp=e.jp.toLowerCase(); }
+    if(e && typeof e.en==='string' && !r.c){ r.en=e.en; recalcEn(r); }
   }
 }
 function saveEdit(id, jp){
   var r=BYID[id]; if(!r) return;
   jp=String(jp);
   if(r.c){ var c=customById(id); if(c) c.jp=jp; r._ojp=jp; }        /* 自作：本体を書き換える */
-  else { if(jp===r._ojp) delete edits[id]; else edits[id]={jp:jp}; } /* 本：差分として保存 */
+  else { var e=edits[id]||{}; if(jp===r._ojp) delete e.jp; else e.jp=jp; setEdit(id,e); } /* 本：差分（英語の編集は残す） */
   r.jp=jp; r._jp=jp.toLowerCase();
+  persist(); updateCard(id);
+}
+function saveEn(id, en){
+  var r=BYID[id]; if(!r) return;
+  en=String(en).trim(); if(!en || en===r.en) return;
+  if(r.c){ saveCustomEn(id, en); r._oen=r.en; return; }           /* 自作：本体を書き換える */
+  var e=edits[id]||{}; if(en===r._oen) delete e.en; else e.en=en; setEdit(id,e);  /* 本：差分として保存 */
+  r.en=en; recalcEn(r);
   persist(); updateCard(id);
 }
 function saveCustomEn(id, en){
@@ -997,12 +1046,12 @@ function flushEdit(){
   var r=BYID[dlgId]; if(!r) return false;
   var changed=false;
   var te=document.getElementById('eden');
-  if(te && r.c && te.value.trim() && te.value.trim()!==r.en){ saveCustomEn(dlgId, te.value); shT.textContent=r.en; changed=true; }
+  if(te && te.value.trim() && te.value.trim()!==r.en){ saveEn(dlgId, te.value); shT.textContent=r.en; changed=true; }
   var ta=document.getElementById('edjp');
   if(ta && ta.value!==r.jp){ saveEdit(dlgId, ta.value); changed=true; }
   if(changed){
     var m=document.getElementById('edmsg'); if(m) m.textContent='保存しました ✓';
-    shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[dlgId]?'（訳を編集済み）':'');
+    shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[dlgId]?'（編集済み）':'');
   }
   return changed;
 }
@@ -1012,15 +1061,19 @@ function openHist(id){
   sheetMode='hist'; dlgId=id;
   var r=BYID[id], a=(miss[id]||[]).slice();
   shT.textContent=r.en;
-  shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[id]?'（訳を編集済み）':'');
+  shS.textContent=r.c?'自作の'+(IS_SOKU?'熟語':'単語'):(edits[id]?'（編集済み）':'');
+  var ed=edits[id]||{};
   var h='<div class="ed">'
-   + (r.c ? '<div class="edlab">'+(IS_SOKU?'熟語':'単語')+'（英語）</div>'
-          + '<textarea id="eden" rows="1" autocapitalize="none" autocorrect="off" spellcheck="false">'+esc(r.en)+'</textarea>'
-          + '<div class="edlab" style="margin-top:10px">意味（ここで書き換えられます）</div>'
-          : '<div class="edlab">意味（ここで書き換えられます）</div>')
+   + '<div class="edlab">'+(IS_SOKU?'熟語':'単語')+'（英語）</div>'
+   + '<textarea id="eden" rows="1" autocapitalize="none" autocorrect="off" spellcheck="false">'+esc(r.en)+'</textarea>'
+   + (!r.c && ed.en!==undefined ? '<div class="edorig">元の英語：'+esc(r._oen)+'</div>' : '')
+   + '<div class="edlab" style="margin-top:10px">意味</div>'
    + '<textarea id="edjp" rows="1">'+esc(r.jp)+'</textarea>'
+   + (!r.c && ed.jp!==undefined ? '<div class="edorig">元の訳：'+esc(r._ojp)+'</div>' : '')
+   + (IS_SOKU ? '<div class="edrow"><button class="gbtn" id="ednum">①② 意味を番号で分ける</button></div>' : '')
    + '<div class="edrow"><button class="gbtn" id="edsave">保存</button>'
-   + (!r.c && edits[id]?'<button class="gbtn" id="edreset">元に戻す</button>':'')
+   + (!r.c && ed.en!==undefined ? '<button class="gbtn" id="edreseten">英語を元に戻す</button>' : '')
+   + (!r.c && ed.jp!==undefined ? '<button class="gbtn" id="edreset">訳を元に戻す</button>' : '')
    + '<span class="edmsg" id="edmsg">改行OK・入力すると自動で保存されます</span></div>'
    + '<div class="edrow"><button class="gbtn" id="edmask">✂ 隠す場所を選ぶ</button></div>'
    + (r.c ? '<div class="edrow"><button class="gbtn danger" id="eddel">この'+(IS_SOKU?'熟語':'単語')+'を削除</button></div>' : '')
@@ -1252,7 +1305,8 @@ function openHelp(){
   h+='</table><div class="note"><b>順不同</b>をONにすると <code>be in</code> で「be と in を両方含む」（順序自由）。<br>'
    + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。<br>'
    + '<b>組の管理</b>で「親」を選ぶとグループを入れ子にでき、親を選ぶと子の分もまとめて出ます。<br>'
-   + '<b>訳の編集</b>は、間違い回数の数字をタップした画面でできます。<br>'
+   + '<b>英語・訳の編集</b>は、間違い回数の数字をタップした画面でできます（「元に戻す」でいつでも元通り）。<br>'
+   + (IS_SOKU ? '<b>①② 意味を番号で分ける</b>：その画面のボタンで「①～を手放す ②～をあきらめる」の形にできます。<br>' : '')
    + '<b>自作の'+(IS_SOKU?'熟語':'単語')+'</b>は ⋯ →「追加」から。「自作」チップで一覧、カードの「自作」をタップで修正・削除できます。'
    + (HAS_TTS ? '<br><b>発音</b>はカードの 🔊 で。音量・速さ・声は ⋯ →「発音の設定」で変えられます。' : '')
    + '<br><b>隠して覚える</b>：「訳を隠す」「英語を隠す」で全部、「部分を隠す」で自分で選んだ所だけ隠れます。隠れた所は<b>タップで見えます</b>。'
@@ -1328,8 +1382,8 @@ function applyDataset(rows, meta, state){
 }
 function doExport(){
   var d={app:'eigo', kind:KIND, title:TITLE, ts:Date.now(),
-         rows:BOOK.map(function(r){ return IS_SOKU?{id:r.id,n:r.n,t:r.t,no:r.no,en:r.en,jp:r._ojp}
-                                                  :{id:r.id,no:r.no,en:r.en,jp:r._ojp,s:r.s}; }),
+         rows:BOOK.map(function(r){ return IS_SOKU?{id:r.id,n:r.n,t:r.t,no:r.no,en:r._oen,jp:r._ojp}
+                                                  :{id:r.id,no:r.no,en:r._oen,jp:r._ojp,s:r.s}; }),
          state:payload()};
   var blob=new Blob([JSON.stringify(d)],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -1395,6 +1449,10 @@ ovl.addEventListener('click', function(e){
   var t=e.target; if(!t.getAttribute) return;
   var v;
   if(t.id==='edmask' && dlgId){ openMask(dlgId); return; }
+  if(t.id==='ednum' && dlgId){
+    var nr=applyNumbering(); if(nr.changed) openHist(dlgId);
+    var nm=document.getElementById('edmsg'); if(nm) nm.textContent=nr.msg; return;
+  }
   if((v=t.getAttribute('data-mm'))){ meSetMode(v); openMask(ME.id); return; }
   if((v=t.getAttribute('data-mnav'))){
     var nx=meNeighbor(filtered.map(function(x){ return x.id; }), ME.id, +v);
@@ -1408,7 +1466,8 @@ ovl.addEventListener('click', function(e){
     blurInputs(); return;
   }
   if(t.id==='eddel' && dlgId){ deleteCustom(dlgId); return; }
-  if(t.id==='edreset' && dlgId){ clearTimeout(editTimer); blurInputs(); saveEdit(dlgId, BYID[dlgId]._ojp); openHist(dlgId); return; }
+  if(t.id==='edreset' && dlgId){ flushEdit(); blurInputs(); saveEdit(dlgId, BYID[dlgId]._ojp); openHist(dlgId); return; }
+  if(t.id==='edreseten' && dlgId){ flushEdit(); blurInputs(); saveEn(dlgId, BYID[dlgId]._oen); openHist(dlgId); return; }
   if((v=t.getAttribute('data-hx'))!==null && v!==undefined && dlgId){
     flushEdit();
     var a=miss[dlgId]; if(!a) return;
