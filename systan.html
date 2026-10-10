@@ -56,6 +56,21 @@ select.chip{padding:7px 10px; max-width:150px; -webkit-appearance:none; text-ali
 .gsrow.fixed.on{color:var(--accent)}
 .gsnm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .gspath{display:none; color:var(--muted); font-weight:400; font-size:13px}
+.ghrow{display:flex; gap:6px; align-items:center; margin-bottom:8px}
+.ghrow .gfil{flex:1; min-width:0; margin-bottom:0}
+.ghsp{flex:1}
+.gsortbtn{flex:none; border:1px solid var(--border); background:var(--bg); color:var(--muted);
+  border-radius:9px; padding:10px 10px; font-size:13px; font-weight:600; white-space:nowrap; touch-action:manipulation}
+.gprb{flex:none; font-size:11px; font-weight:700; color:var(--muted); border:1px solid var(--border);
+  border-radius:6px; padding:1px 5px; margin-left:6px}
+.gprb.hi{color:#fff; background:var(--miss); border-color:var(--miss)}
+.gchk .gprb{margin-left:auto}
+.gchk .gprb + .gcount{margin-left:8px}
+.gm-row{flex-wrap:wrap; row-gap:7px}
+.gm-br{flex-basis:100%; height:0}
+.gpri{background:var(--bg); border:1px solid var(--border); color:var(--muted); border-radius:7px;
+  padding:7px 5px; font-size:12px; flex:none}
+.gpri.set{color:var(--miss); border-color:var(--miss); font-weight:700}
 .searching .gsrow:not(.fixed){padding-left:6px !important}
 .searching .gspath{display:inline}
 .statusline{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:12px; color:var(--muted)}
@@ -215,14 +230,13 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <button id="clear">×</button>
   </div>
   <div class="chips">
+    <button class="chip" id="gsel">組：全部 ▾</button>
     <button class="chip active" data-f="all">すべて</button><button class="chip" data-f="shin">新</button><button class="chip" data-f="自作">自作</button>
-    <button class="chip" id="markbtn">★のみ</button>
-    <button class="chip" id="andbtn">順不同 OFF</button>
+    <button class="chip" id="hidepart">部分を隠す</button>
     <button class="chip" id="hidejp">訳を隠す</button>
     <button class="chip" id="hideen">英語を隠す</button>
-    <button class="chip" id="hidepart">部分を隠す</button>
-    <button class="chip" id="gsel">組：全部 ▾</button>
-    <button class="chip" id="gbulk">一括</button>
+    <button class="chip" id="markbtn">★のみ</button>
+    <button class="chip" id="andbtn">順不同 OFF</button>
     <button class="chip" id="gmgr">組の管理</button>
     <select class="chip" id="sort">
       <option value="def">番号↑</option>
@@ -288,23 +302,47 @@ var NLE_RE=/^([0-9]+)(?:以下|まで)$/;
 var NGE_RE=/^([0-9]+)(?:以上|から)$/;
 var MISS_RE=/^(?:間違い|間違え|まちがい|ミス|✗|×)\s*([0-9]+)(?:[-~\u301C\uFF5E]([0-9]+))?(以上|以下)?$/;
 var MISSANY_RE=/^(?:間違い|間違え|まちがい|ミス|✗|×)\s*(あり|なし)$/;
+/* 期間つき：6日間で1回以上 / 3時間以内に2回以上 / 1週間で3~5回 / 今日1回以上 */
+var MT_CNT='(?:間違い|間違え|まちがい|ミス)?([0-9]+)回?(?:[-~]([0-9]+)回?)?(以上|以下)?(?:間違え(?:た)?|間違い|まちがえた|ミス)?$';
+var MT_RE=new RegExp('^(?:直近|最近|過去|ここ)?([0-9]+(?:\\.[0-9]+)?)(分|時間|日|週|か月|ヶ月|カ月|ヵ月|ケ月)間?(?:以内)?(?:で|に|の間に?|のうちに?)?'+MT_CNT);
+var TODAY_RE=new RegExp('^(?:今日|きょう)(?:中に?|で|に)?'+MT_CNT);
+var MT_MS={'分':6e4,'時間':36e5,'日':864e5,'週':6048e5};
 var INF=1e9;
+function toHalf(t){
+  return t.replace(/[\uFF10-\uFF19\uFF0E]/g,function(c){ return String.fromCharCode(c.charCodeAt(0)-0xFEE0); })
+          .replace(/[\u301C\uFF5E]/g,'~');
+}
+function mtTerm(since, c, c2, op){
+  c=+c;
+  if(c2) return {k:'mt', since:since, a:Math.min(c,+c2), b:Math.max(c,+c2)};
+  if(op==='以上') return {k:'mt', since:since, a:c, b:INF};
+  if(op==='以下') return {k:'mt', since:since, a:0, b:c};
+  return {k:'mt', since:since, a:c, b:c};
+}
 
 function classify(t){
-  var m;
-  if((m=t.match(MISSANY_RE))) return m[1]==='あり' ? {k:'miss',a:1,b:INF} : {k:'miss',a:0,b:0};
-  if((m=t.match(MISS_RE))){
+  var m, u=toHalf(t);
+  if((m=u.match(MT_RE))){
+    var ms=MT_MS[m[2]]||(30*864e5);
+    return mtTerm(Date.now()-parseFloat(m[1])*ms, m[3], m[4], m[5]);
+  }
+  if((m=u.match(TODAY_RE))){
+    var d0=new Date(); d0.setHours(0,0,0,0);
+    return mtTerm(d0.getTime(), m[1], m[2], m[3]);
+  }
+  if((m=u.match(MISSANY_RE))) return m[1]==='あり' ? {k:'miss',a:1,b:INF} : {k:'miss',a:0,b:0};
+  if((m=u.match(MISS_RE))){
     var a=+m[1];
     if(m[2]) return {k:'miss', a:a, b:+m[2]};
     if(m[3]==='以上') return {k:'miss', a:a, b:INF};
     if(m[3]==='以下') return {k:'miss', a:0, b:a};
     return {k:'miss', a:a, b:a};
   }
-  if((m=t.match(NRANGE_RE))) return {k:'nrange', a:+m[1], b:+m[2]};
-  if((m=t.match(NLE_RE)))    return {k:'nrange', a:0,     b:+m[1]};
-  if((m=t.match(NGE_RE)))    return {k:'nrange', a:+m[1], b:INF};
-  if((m=t.match(LEN_RE)))    return {k:'len', a:+m[1], b:m[2]?+m[2]:+m[1]};
-  if((m=t.match(WC_RE)))     return {k:'wc',  a:+m[1], b:m[2]?+m[2]:+m[1]};
+  if((m=u.match(NRANGE_RE))) return {k:'nrange', a:+m[1], b:+m[2]};
+  if((m=u.match(NLE_RE)))    return {k:'nrange', a:0,     b:+m[1]};
+  if((m=u.match(NGE_RE)))    return {k:'nrange', a:+m[1], b:INF};
+  if((m=u.match(LEN_RE)))    return {k:'len', a:+m[1], b:m[2]?+m[2]:+m[1]};
+  if((m=u.match(WC_RE)))     return {k:'wc',  a:+m[1], b:m[2]?+m[2]:+m[1]};
   if((m=t.match(QUOTE_RE)))  return {k:'word', v:m[1].trim().toLowerCase()};
   if(t.length>1 && t.charAt(t.length-1)==='-') return {k:'pre', v:t.slice(0,-1).toLowerCase()};
   if(t.length>1 && t.charAt(0)==='-')          return {k:'suf', v:t.slice(1).toLowerCase()};
@@ -314,6 +352,12 @@ function classify(t){
 function parseQuery(raw, andMode){
   var toks=raw.split(/\s+/).filter(Boolean);
   if(!toks.length) return {type:'empty'};
+  /* 「6日間で 1回以上」のように途中に空白が入っても1つの条件として読む */
+  for(var z=0;z+1<toks.length;z++){
+    if(classify(toks[z])) continue;
+    var jn=classify(toks[z]+toks[z+1]);
+    if(jn && jn.k==='mt') toks.splice(z,2,toks[z]+toks[z+1]);
+  }
   if(toks.length===1 && /^[0-9]+$/.test(toks[0])) return {type:'num', n:parseInt(toks[0],10)};
   var cls=toks.map(classify);
   var hasSpecial=cls.some(function(c){return !!c;});
@@ -375,6 +419,11 @@ function matchEntry(r, raw, andMode){
     if(t.k==='wc'){  if(r._wc <t.a||r._wc >t.b) return {ok:false,needles:[]}; continue; }
     if(t.k==='nrange'){ if(r.no<t.a||r.no>t.b) return {ok:false,needles:[]}; continue; }
     if(t.k==='miss'){ var mc=r._miss||0; if(mc<t.a||mc>t.b) return {ok:false,needles:[]}; continue; }
+    if(t.k==='mt'){
+      var ma=r._mt||[], mn=0;
+      for(var x=0;x<ma.length;x++) if(ma[x]>=t.since) mn++;
+      if(mn<t.a||mn>t.b) return {ok:false,needles:[]}; continue;
+    }
     if(t.k==='word'){ if(r._w.indexOf(t.v)<0) return {ok:false,needles:[]}; needles.push(t.v); continue; }
     if(t.k==='pre'){
       if(!(anyStarts(r._v,t.v) || r._jp.lastIndexOf(t.v,0)===0)) return {ok:false,needles:[]};
@@ -629,7 +678,7 @@ var listEl=document.getElementById('list'), emptyEl=document.getElementById('emp
     markBtn=document.getElementById('markbtn'), themeBtn=document.getElementById('theme'),
     menuBtn=document.getElementById('menu'), sortSel=document.getElementById('sort'),
     gsel=document.getElementById('gsel'), gmgrBtn=document.getElementById('gmgr'),
-    gbulkBtn=document.getElementById('gbulk'), subEl=document.getElementById('sub'),
+    subEl=document.getElementById('sub'),
     ovl=document.getElementById('ovl'), shT=document.getElementById('sh-t'),
     shS=document.getElementById('sh-s'), shB=document.getElementById('sh-b');
 
@@ -667,7 +716,7 @@ function prepOne(r,i){
   r._v=variants(r.en);
   r._len=(String(r.en).match(/[A-Za-z]/g)||[]).length;
   r._wc=r._w.filter(function(x){return x.length>0;}).length;
-  r._miss=(miss[r.id]||[]).length;
+  r._mt=miss[r.id]||[]; r._miss=r._mt.length;
 }
 /* 自作の単語は番号をマイナスにして、本の番号検索（300以下 など）に混ざらないようにする */
 function customRow(c){
@@ -685,7 +734,7 @@ function prep(rows){
   applyEdits();   /* 索引(BYID)を作ってから反映する。逆順だと起動時に空振りして訳が元に戻る */
 }
 var BYID={};
-function syncMiss(){ DATA.forEach(function(r){ r._miss=(miss[r.id]||[]).length; }); }
+function syncMiss(){ DATA.forEach(function(r){ r._mt=miss[r.id]||[]; r._miss=r._mt.length; }); }
 /* 英語を変えたら、検索用の下ごしらえも作り直す */
 function recalcEn(r){
   var en=String(r.en);
@@ -764,12 +813,28 @@ function createGroup(n, parent){ n=String(n||'').trim(); if(!n) return null;
    以前は行ごと・比較ごとに localeCompare('ja') を呼んでいて、iPhoneでは特に重かった */
 var COLL=(window.Intl && Intl.Collator) ? new Intl.Collator('ja') : null;
 function cmpName(a,b){ return COLL ? COLL.compare(a.name,b.name) : (a.name<b.name?-1:(a.name>b.name?1:0)); }
+/* 優先度：1が一番高く10が一番低い。0＝未設定 */
+function gPr(g){ var p=+(g&&g.pr)||0; return (p>=1&&p<=10)?p:0; }
+var gSortMode=(lsGet('gsort','')==='pr')?'pr':'name';
+function setGSort(m){ gSortMode=m; lsSet('gsort',m); GIDX=null; }
 var GIDX=null;
 function gidx(){
   if(GIDX) return GIDX;
   var kids={}, byId={}, i;
   for(i=0;i<groups.length;i++){ var g=groups[i]; byId[g.id]=g; var pp=g.p||''; (kids[pp]=kids[pp]||[]).push(g); }
-  for(var k in kids) kids[k].sort(cmpName);
+  /* 優先度順：子に優先度の高い組があれば、親もその高さで並べる（埋もれないように） */
+  var eff={};
+  function effOf(g){
+    if(eff[g.id]!==undefined) return eff[g.id];
+    var v=gPr(g)||99; eff[g.id]=v;
+    var ch=kids[g.id]||[];
+    for(var q=0;q<ch.length;q++){ var e=effOf(ch[q]); if(e<v) v=e; }
+    return (eff[g.id]=v);
+  }
+  var cmp=(gSortMode==='pr')
+    ? function(a,b){ return (effOf(a)-effOf(b)) || ((gPr(a)||99)-(gPr(b)||99)) || cmpName(a,b); }
+    : cmpName;
+  for(var k in kids) kids[k].sort(cmp);
   var order=[], seen={};
   (function walk(pid, depth){
     var arr=kids[pid]||[];
@@ -1114,12 +1179,13 @@ var gSelQ='';
 function gSelSub(f, hit){
   return f ? (hit+' 個ヒット（全 '+groups.length+' 個）') : ('全 '+groups.length+' 個　名前で検索できます');
 }
-function openGroupSelect(){
-  sheetMode='gsel'; gPickId=null; gSelQ='';
+function openGroupSelect(keepQ){
+  sheetMode='gsel'; gPickId=null; if(!keepQ) gSelQ='';
   shT.textContent='組で絞り込み'; shS.textContent=gSelSub('',0);
   var gl=sortedGroups();
-  var h='<div class="ghead"><input class="gfil" id="gselq" type="text" enterkeyhint="done" autocomplete="off" '
-      + 'placeholder="🔍 組の名前で検索（親の名前でも可）"></div>';
+  var h='<div class="ghead"><div class="ghrow"><input class="gfil" id="gselq" type="text" enterkeyhint="done" autocomplete="off" '
+      + 'placeholder="🔍 組の名前で検索" value="'+esc(gSelQ).replace(/"/g,'&quot;')+'">'
+      + (groups.length>=2?gSortBtn():'')+'</div></div>';
   h+='<button class="gsrow fixed'+(gFilter===''?' on':'')+'" data-gfsel=""><span class="gsnm">全部表示</span></button>';
   h+='<button class="gsrow fixed'+(gFilter==='__none__'?' on':'')+'" data-gfsel="__none__"><span class="gsnm">組なし</span></button>';
   if(!groups.length) h+='<div class="note">まだ組がありません（「組の管理」で作れます）</div>';
@@ -1129,11 +1195,12 @@ function openGroupSelect(){
      + ' style="padding-left:'+(6+(g._d||0)*16)+'px">'
      + '<span class="gdot" style="background:'+gColor(g)+'"></span>'
      + '<span class="gsnm">'+(path.length?'<span class="gspath">'+esc(path.join(' › '))+' › </span>':'')+esc(g.name)+'</span>'
-     + '<span class="gcount">'+gLabel(g)+'</span></button>';
+     + gPrBadge(g)+'<span class="gcount">'+gLabel(g)+'</span></button>';
   }
   h+='<div class="note" id="gsnone" style="display:none">見つかりません</div>';
   shB.innerHTML=h; openSheet(); sheetEl.classList.add('tall');
   shB.scrollTop=0;
+  if(gSelQ){ applyGSel(); return; }
   var on=shB.querySelector('.gsrow.on:not(.fixed)');
   if(on) setTimeout(function(){
     var d=on.getBoundingClientRect().top-shB.getBoundingClientRect().top;
@@ -1155,9 +1222,16 @@ function pickGroupFilter(v){
   gFilter=v; listDirty=false; closeSheet(); refreshGroupSel(); render(); scheduleSaveView();
 }
 /* --- グループ選択 --- */
+function gSortBtn(){
+  return '<button class="gsortbtn" data-gsort="1">⇅ '+(gSortMode==='pr'?'優先度順':'名前順')+'</button>';
+}
+function gPrBadge(g){ var p=gPr(g); return p ? '<span class="gprb'+(p<=3?' hi':'')+'">優先'+p+'</span>' : ''; }
 function gFilterBox(){
-  if(groups.length<8) return '';
-  return '<div class="ghead"><input class="gfil" id="gfil" type="text" placeholder="グループ名でしぼりこみ（全'+groups.length+'個）" value="'+esc(gDlgFilter).replace(/"/g,'&quot;')+'"></div>';
+  if(groups.length<2) return '';
+  var inp=(groups.length>=8)
+    ? '<input class="gfil" id="gfil" type="text" placeholder="グループ名でしぼりこみ（全'+groups.length+'個）" value="'+esc(gDlgFilter).replace(/"/g,'&quot;')+'">'
+    : '<span class="ghsp"></span>';
+  return '<div class="ghead"><div class="ghrow">'+inp+gSortBtn()+'</div></div>';
 }
 function applyGFilter(){
   var f=gnorm(gDlgFilter.trim()), rows=shB.querySelectorAll('[data-gn]');
@@ -1176,47 +1250,38 @@ function openGroupPicker(id){
      + ' data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'">'
      + '<span class="cb">'+(on?'✓':'')+'</span>'
      + '<span class="gdot" style="background:'+gColor(g)+'"></span><span class="gnm">'+esc(g.name)+'</span>'
-     + '<span class="gcount">'+gLabel(g)+'</span></div>';
+     + gPrBadge(g)+'<span class="gcount">'+gLabel(g)+'</span></div>';
   }
   h+='<div class="sh-act"><input id="gnew" type="text" placeholder="新しいグループ名（例：re系）">'
    + '<button class="big" data-gadd="pick">＋ 作ってここに入れる</button></div>';
   shB.innerHTML=h; openSheet(); applyGFilter();
+}
+function prOptions(g){
+  var p=gPr(g), h='<option value="">優先 –</option>';
+  for(var i=1;i<=10;i++) h+='<option value="'+i+'"'+(p===i?' selected':'')+'>優先'+i+'</option>';
+  return h;
 }
 function openGroupManager(){
   sheetMode='mgr'; gPickId=null;
   shT.textContent='グループの管理'; shS.textContent=groups.length+' 個';
   var h=gFilterBox(), gl=sortedGroups();
   if(!groups.length) h+='<div class="note">まだグループがありません</div>';
-  h+='<div class="note">「親」を選ぶとグループの中に入れ子にできます。件数は「自分だけ／子を含む合計」です。</div>';
+  h+='<div class="note">「親」を選ぶとグループの中に入れ子にできます。件数は「自分だけ／子を含む合計」です。<br>'
+   + '<b>優先度は1が一番高く、10が一番低い</b>です。「⇅ 優先度順」で高い順に並びます。</div>';
   for(var i=0;i<gl.length;i++){ var g=gl[i];
     h+='<div class="gm-row" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'">'
      + '<input type="text" data-gname="'+g.id+'" value="'+esc(g.name).replace(/"/g,'&quot;')+'">'
+     + '<span class="gcount">'+gLabel(g)+'</span><button class="dl-x" data-gdel="'+g.id+'">×</button>'
+     + '<span class="gm-br"></span>'
+     + '<select class="gpri'+(gPr(g)?' set':'')+'" data-gpr="'+g.id+'">'+prOptions(g)+'</select>'
      + '<select class="gpar" data-gpar="'+g.id+'" data-lazy="1">'+parentOptionsLite(g.id)+'</select>'
      + '<span class="gm-colors" data-gcol="'+g.id+'">';
     for(var c=0;c<GCOLORS.length;c++)
       h+='<span class="gm-c'+(((g.c||0)===c)?' on':'')+'" data-c="'+c+'" style="background:'+GCOLORS[c]+'"></span>';
-    h+='</span><span class="gcount">'+gLabel(g)+'</span><button class="dl-x" data-gdel="'+g.id+'">×</button></div>';
+    h+='</span></div>';
   }
   h+='<div class="sh-act"><input id="gnew2" type="text" placeholder="新しいグループ名">'
    + '<button class="big" data-gadd="mgr">＋ グループを作る</button></div>';
-  shB.innerHTML=h; openSheet(); applyGFilter();
-}
-function openBulk(){
-  sheetMode='bulk'; gPickId=null;
-  shT.textContent='表示中の '+filtered.length+' 件をまとめて';
-  shS.textContent=(qEl.value.trim()? '検索：'+qEl.value.trim() : '（絞り込みなし）');
-  var h=gFilterBox(), gl=sortedGroups();
-  if(!filtered.length) h+='<div class="note">表示中の項目がありません</div>';
-  else if(!groups.length) h+='<div class="note">まだグループがありません。下で作れます。</div>';
-  for(var i=0;i<gl.length;i++){ var g=gl[i];
-    h+='<div class="gbar" data-gn="'+esc(g.name.toLowerCase()).replace(/"/g,'&quot;')+'" style="'+gInd(g)+'"><span class="nm">'
-     + '<span class="gdot" style="background:'+gColor(g)+'"></span>'+esc(g.name)
-     + '<span class="gcount">'+gLabel(g)+'</span></span>'
-     + '<button class="gbtn" data-badd="'+g.id+'">追加</button>'
-     + '<button class="gbtn" data-brem="'+g.id+'">外す</button></div>';
-  }
-  h+='<div class="sh-act"><input id="gnew3" type="text" placeholder="新しいグループ名">'
-   + '<button class="big" data-gadd="bulk">＋ 作って表示中を全部入れる</button></div>';
   shB.innerHTML=h; openSheet(); applyGFilter();
 }
 /* ================= 発音（iPhone内蔵の読み上げ音声） =================
@@ -1362,15 +1427,18 @@ function openHelp(){
       ['"all"','all という語そのもの（call は除外）'],['1 in','2番目の語が in'],
       ['be 2 in','1番目 be・3番目 in'],['5文字','アルファベット5文字'],['3語','3語でできた熟語'],
       ['300以下','番号300以下'],['600~1100','番号600〜1100'],
-      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],['反','意味に「反」を含む']]
+      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],
+      ['6日間で1回以上','6日前から今までに1回以上間違えた'],['3時間以内に2回以上','3時間以内に2回以上間違えた'],['46日間で6回以上','46日間で6回以上（1週間・30分・2か月 なども可）'],['今日1回以上','今日（0時から）1回以上間違えた'],['反','意味に「反」を含む']]
    : [['get','get を含む'],['re-','re で始まる'],['-tion','tion で終わる'],
       ['re- -tion','re で始まり tion で終わる'],['5文字','5文字の単語'],['5文字 re-','5文字で re で始まる'],
       ['"all"','all という語そのもの'],['300以下','番号300以下'],['600~1100','番号600〜1100'],
-      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],['反','意味に「反」を含む']];
+      ['間違い3以上','間違えた回数が3回以上'],['間違いあり','1回以上間違えた'],
+      ['6日間で1回以上','6日前から今までに1回以上間違えた'],['3時間以内に2回以上','3時間以内に2回以上間違えた'],['46日間で6回以上','46日間で6回以上（1週間・30分・2か月 なども可）'],['今日1回以上','今日（0時から）1回以上間違えた'],['反','意味に「反」を含む']];
   var h='<table class="htab">';
   for(var i=0;i<rows.length;i++) h+='<tr><td><code>'+esc(rows[i][0])+'</code></td><td>'+esc(rows[i][1])+'</td></tr>';
   h+='</table><div class="note"><b>順不同</b>をONにすると <code>be in</code> で「be と in を両方含む」（順序自由）。<br>'
-   + '<b>組</b>で絞り込み、<b>一括</b>で表示中をまとめてグループ分けできます。<br>'
+   + '<b>組：全部 ▾</b>で組を選ぶとその組だけ表示（名前で検索できます）。<br>'
+   + '<b>優先度</b>：組の管理で組ごとに優先1〜10（1が一番高い）を付け、組の一覧の「⇅」で名前順／優先度順を切り替えられます。<br>'
    + '<b>組の管理</b>で「親」を選ぶとグループを入れ子にでき、親を選ぶと子の分もまとめて出ます。<br>'
    + '<b>英語・訳の編集</b>は、間違い回数の数字をタップした画面でできます（「元に戻す」でいつでも元通り）。<br>'
    + (IS_SOKU ? '<b>①② 意味を番号で分ける</b>：その画面のボタンで「①～を手放す ②～をあきらめる」の形にできます。<br>' : '')
@@ -1500,7 +1568,7 @@ listEl.addEventListener('click', function(e){
     var a=miss[id]||(miss[id]=[]);
     if(act==='inc') a.push(Date.now()); else { if(!a.length) return; a.pop(); }
     if(!a.length) delete miss[id];
-    persist(); r._miss=(miss[id]||[]).length;
+    persist(); r._mt=miss[id]||[]; r._miss=r._mt.length;
     /* 並び順や絞り込みに関係なく、その場で数字だけ更新（一覧を作り直さない＝位置が動かない） */
     var cnt=cardEl.querySelector('.cnt'), c=r._miss||0;
     cnt.textContent=c; cnt.classList.toggle('has',c>0);
@@ -1517,6 +1585,13 @@ ovl.addEventListener('click', function(e){
   var v;
   var gs=t.closest && t.closest('[data-gfsel]');
   if(gs){ pickGroupFilter(gs.getAttribute('data-gfsel')||''); return; }
+  if(t.getAttribute('data-gsort')){
+    setGSort(gSortMode==='pr'?'name':'pr');
+    if(sheetMode==='gsel') openGroupSelect(true);
+    else if(sheetMode==='pick' && gPickId) openGroupPicker(gPickId);
+    else if(sheetMode==='mgr') openGroupManager();
+    return;
+  }
   if(t.id==='edmask' && dlgId){ openMask(dlgId); return; }
   if(t.id==='ednum' && dlgId){
     var nr=applyNumbering(); if(nr.changed) openHist(dlgId);
@@ -1561,19 +1636,14 @@ ovl.addEventListener('click', function(e){
     return;
   }
   if((v=t.getAttribute('data-gadd'))){
-    var box=document.getElementById(v==='pick'?'gnew':(v==='mgr'?'gnew2':'gnew3'));
+    var box=document.getElementById(v==='pick'?'gnew':'gnew2');
     var g=createGroup(box.value); if(!g) return;
     if(v==='pick' && gPickId) addToGroup(gPickId, g.id);
-    if(v==='bulk') for(var i=0;i<filtered.length;i++) addToGroup(filtered[i].id, g.id);
     blurInputs();
     var keep=gPickId; afterChange();
-    if(v==='pick'){ updateCard(keep); openGroupPicker(keep); } else if(v==='mgr') openGroupManager(); else openBulk();
+    if(v==='pick'){ updateCard(keep); openGroupPicker(keep); } else openGroupManager();
     return;
   }
-  if((v=t.getAttribute('data-badd'))){ for(var b=0;b<filtered.length;b++) addToGroup(filtered[b].id, v);
-    afterChange(); openBulk(); return; }
-  if((v=t.getAttribute('data-brem'))){ for(var c2=0;c2<filtered.length;c2++) removeFromGroup(filtered[c2].id, v);
-    afterChange(); openBulk(); return; }
   if((v=t.getAttribute('data-gdel'))){
     var gg=gById(v); if(!gg) return;
     if(!confirm('グループ「'+gg.name+'」を消します。単語自体は消えません。')) return;
@@ -1610,6 +1680,13 @@ ovl.addEventListener('change', function(e){
   var t=e.target;
   if(t.id==='impfile'){ if(t.files&&t.files[0]) handleFile(t.files[0]); return; }
   if(t.id==='ttsvoice'){ TTS.voice=t.value; saveTts(); speak('pronunciation'); return; }
+  var prid=t.getAttribute && t.getAttribute('data-gpr');
+  if(prid){
+    var gp=gById(prid); if(!gp) return;
+    var pv=parseInt(t.value,10);
+    if(pv>=1 && pv<=10) gp.pr=pv; else delete gp.pr;
+    var st=shB.scrollTop; afterChange(); openGroupManager(); shB.scrollTop=st; return;
+  }
   var pid=t.getAttribute && t.getAttribute('data-gpar');
   if(pid){
     var g=gById(pid); if(!g) return;
@@ -1643,12 +1720,11 @@ andBtn.addEventListener('click', function(){ andMode=!andMode; lsSet('andMode',a
 markBtn.addEventListener('click', function(){ markOnly=!markOnly;
   markBtn.classList.toggle('active',markOnly); render(); });
 sortSel.addEventListener('change', function(){ sortMode=sortSel.value; lsSet('sort',sortMode); render(); });
-gsel.addEventListener('click', openGroupSelect);
+gsel.addEventListener('click', function(){ openGroupSelect(false); });
 ovl.addEventListener('keydown', function(e){
   if(e.target.id==='gselq' && e.key==='Enter' && !e.isComposing){ e.preventDefault(); e.target.blur(); }
 });
 gmgrBtn.addEventListener('click', openGroupManager);
-gbulkBtn.addEventListener('click', openBulk);
 menuBtn.addEventListener('click', openMenu);
 themeBtn.addEventListener('click', function(){
   var nt=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
