@@ -45,6 +45,19 @@ h1{font-size:17px; margin:0; white-space:nowrap}
 .chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
 #markbtn.active{background:var(--star); border-color:var(--star); color:#3a2c00}
 select.chip{padding:7px 10px; max-width:150px; -webkit-appearance:none; text-align:center}
+#gsel{max-width:170px; overflow:hidden; text-overflow:ellipsis}
+.sheet.tall{height:92%}
+.gsrow{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:transparent;
+  border:none; border-bottom:1px solid var(--border); color:var(--text); padding:13px 6px;
+  font-size:15px; font-family:inherit; touch-action:manipulation}
+.gsrow.on{background:var(--accent-soft); color:var(--accent); font-weight:700}
+.gsrow.on .gsnm::after{content:"  ✓"}
+.gsrow.fixed{color:var(--muted); font-weight:600}
+.gsrow.fixed.on{color:var(--accent)}
+.gsnm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.gspath{display:none; color:var(--muted); font-weight:400; font-size:13px}
+.searching .gsrow:not(.fixed){padding-left:6px !important}
+.searching .gspath{display:inline}
 .statusline{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:12px; color:var(--muted)}
 .statusline b{color:var(--text)}
 main{flex:1; overflow-y:auto;
@@ -208,7 +221,7 @@ textarea{width:100%; min-height:150px; background:var(--bg); border:1px solid va
     <button class="chip" id="hidejp">訳を隠す</button>
     <button class="chip" id="hideen">英語を隠す</button>
     <button class="chip" id="hidepart">部分を隠す</button>
-    <select class="chip" id="gsel"><option value="">組：全部</option></select>
+    <button class="chip" id="gsel">組：全部 ▾</button>
     <button class="chip" id="gbulk">一括</button>
     <button class="chip" id="gmgr">組の管理</button>
     <select class="chip" id="sort">
@@ -814,13 +827,10 @@ function parentOptions(gid){
   return h;
 }
 function refreshGroupSel(){
-  var cur=gFilter, list=sortedGroups();
-  var h='<option value="">組：全部</option><option value="__none__">組なし</option>';
-  for(var i=0;i<list.length;i++){
-    var g=list[i], ind=''; for(var d=0;d<(g._d||0);d++) ind+='　';
-    h+='<option value="'+g.id+'">'+ind+esc(g.name)+'（'+gLabel(g)+'）</option>';
-  }
-  gsel.innerHTML=h; gsel.value=cur; if(gsel.value!==cur){ gFilter=''; gsel.value=''; }
+  if(gFilter && gFilter!=='__none__' && !gById(gFilter)) gFilter='';
+  var g=gFilter&&gFilter!=='__none__'?gById(gFilter):null;
+  gsel.textContent=(gFilter==='__none__' ? '組なし' : (g ? '組：'+g.name : '組：全部'))+' ▾';
+  gsel.classList.toggle('active', !!gFilter);
 }
 
 /* ================= 表示 ================= */
@@ -989,7 +999,9 @@ document.addEventListener('focusout', function(){
 function blurInputs(){ try{ var a=document.activeElement;
   if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')){ a.blur(); return true; } }catch(e){}
   return false; }
+var sheetEl=document.querySelector('#ovl .sheet');
 function openSheet(){
+  sheetEl.classList.remove('tall'); shB.classList.remove('searching');
   /* 操作バーと絞り込み欄はスクロール領域の外へ（重なった行がタップできなくなるのを防ぐ） */
   var f=document.getElementById('sh-f');
   if(f){ f.innerHTML=''; var a=shB.querySelector('.sh-act'); if(a) f.appendChild(a); }
@@ -1087,14 +1099,69 @@ function openHist(id){
   shB.innerHTML=h; openSheet();
   autoGrow(document.getElementById('edjp')); autoGrow(document.getElementById('eden'));
 }
+/* --- 組で絞り込み（名前で検索できる一覧） --- */
+/* 検索用の正規化：全角半角・大文字小文字・カタカナ/ひらがなの違いを無視 */
+function gnorm(x){
+  x=String(x||''); try{ x=x.normalize('NFKC'); }catch(e){}
+  return x.toLowerCase().replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)-0x60); });
+}
+function gPath(g){
+  var a=[], p=g.p, n=0;
+  while(p && n<9){ var pg=gById(p); if(!pg) break; a.unshift(pg.name); p=pg.p; n++; }
+  return a;
+}
+var gSelQ='';
+function gSelSub(f, hit){
+  return f ? (hit+' 個ヒット（全 '+groups.length+' 個）') : ('全 '+groups.length+' 個　名前で検索できます');
+}
+function openGroupSelect(){
+  sheetMode='gsel'; gPickId=null; gSelQ='';
+  shT.textContent='組で絞り込み'; shS.textContent=gSelSub('',0);
+  var gl=sortedGroups();
+  var h='<div class="ghead"><input class="gfil" id="gselq" type="text" enterkeyhint="done" autocomplete="off" '
+      + 'placeholder="🔍 組の名前で検索（親の名前でも可）"></div>';
+  h+='<button class="gsrow fixed'+(gFilter===''?' on':'')+'" data-gfsel=""><span class="gsnm">全部表示</span></button>';
+  h+='<button class="gsrow fixed'+(gFilter==='__none__'?' on':'')+'" data-gfsel="__none__"><span class="gsnm">組なし</span></button>';
+  if(!groups.length) h+='<div class="note">まだ組がありません（「組の管理」で作れます）</div>';
+  for(var i=0;i<gl.length;i++){ var g=gl[i], path=gPath(g);
+    h+='<button class="gsrow'+(gFilter===g.id?' on':'')+'" data-gfsel="'+g.id+'"'
+     + ' data-gq="'+esc(gnorm(path.concat([g.name]).join(' \u203a '))).replace(/"/g,'&quot;')+'"'
+     + ' style="padding-left:'+(6+(g._d||0)*16)+'px">'
+     + '<span class="gdot" style="background:'+gColor(g)+'"></span>'
+     + '<span class="gsnm">'+(path.length?'<span class="gspath">'+esc(path.join(' › '))+' › </span>':'')+esc(g.name)+'</span>'
+     + '<span class="gcount">'+gLabel(g)+'</span></button>';
+  }
+  h+='<div class="note" id="gsnone" style="display:none">見つかりません</div>';
+  shB.innerHTML=h; openSheet(); sheetEl.classList.add('tall');
+  shB.scrollTop=0;
+  var on=shB.querySelector('.gsrow.on:not(.fixed)');
+  if(on) setTimeout(function(){
+    var d=on.getBoundingClientRect().top-shB.getBoundingClientRect().top;
+    if(d>shB.clientHeight-60) shB.scrollTop+=d-shB.clientHeight/2;
+  }, 0);
+}
+function applyGSel(){
+  var f=gnorm(gSelQ.trim()), rows=shB.querySelectorAll('[data-gq]'), hit=0;
+  shB.classList.toggle('searching', !!f);
+  for(var i=0;i<rows.length;i++){
+    var ok=!f || rows[i].getAttribute('data-gq').indexOf(f)>=0;
+    rows[i].style.display=ok?'':'none'; if(ok) hit++;
+  }
+  var nn=document.getElementById('gsnone'); if(nn) nn.style.display=(f&&!hit&&groups.length)?'':'none';
+  shS.textContent=gSelSub(f, hit);
+  shB.scrollTop=0;
+}
+function pickGroupFilter(v){
+  gFilter=v; listDirty=false; closeSheet(); refreshGroupSel(); render(); scheduleSaveView();
+}
 /* --- グループ選択 --- */
 function gFilterBox(){
   if(groups.length<8) return '';
   return '<div class="ghead"><input class="gfil" id="gfil" type="text" placeholder="グループ名でしぼりこみ（全'+groups.length+'個）" value="'+esc(gDlgFilter).replace(/"/g,'&quot;')+'"></div>';
 }
 function applyGFilter(){
-  var f=gDlgFilter.trim().toLowerCase(), rows=shB.querySelectorAll('[data-gn]');
-  for(var i=0;i<rows.length;i++){ var nm=rows[i].getAttribute('data-gn')||'';
+  var f=gnorm(gDlgFilter.trim()), rows=shB.querySelectorAll('[data-gn]');
+  for(var i=0;i<rows.length;i++){ var nm=gnorm(rows[i].getAttribute('data-gn')||'');
     rows[i].style.display=(!f||nm.indexOf(f)>=0)?'':'none'; }
 }
 function openGroupPicker(id){
@@ -1448,6 +1515,8 @@ listEl.addEventListener('click', function(e){
 ovl.addEventListener('click', function(e){
   var t=e.target; if(!t.getAttribute) return;
   var v;
+  var gs=t.closest && t.closest('[data-gfsel]');
+  if(gs){ pickGroupFilter(gs.getAttribute('data-gfsel')||''); return; }
   if(t.id==='edmask' && dlgId){ openMask(dlgId); return; }
   if(t.id==='ednum' && dlgId){
     var nr=applyNumbering(); if(nr.changed) openHist(dlgId);
@@ -1561,6 +1630,7 @@ ovl.addEventListener('input', function(e){
     return;
   }
   if(t.id==='gfil'){ gDlgFilter=t.value; applyGFilter(); return; }
+  if(t.id==='gselq'){ gSelQ=t.value; applyGSel(); return; }
   var gid=t.getAttribute && t.getAttribute('data-gname');
   if(gid){ var g=gById(gid); if(g){ g.name=t.value; persist(); refreshGroupSel();
     var row=t.parentNode; if(row&&row.setAttribute) row.setAttribute('data-gn',String(t.value).toLowerCase()); } }
@@ -1573,7 +1643,10 @@ andBtn.addEventListener('click', function(){ andMode=!andMode; lsSet('andMode',a
 markBtn.addEventListener('click', function(){ markOnly=!markOnly;
   markBtn.classList.toggle('active',markOnly); render(); });
 sortSel.addEventListener('change', function(){ sortMode=sortSel.value; lsSet('sort',sortMode); render(); });
-gsel.addEventListener('change', function(){ gFilter=gsel.value; render(); });
+gsel.addEventListener('click', openGroupSelect);
+ovl.addEventListener('keydown', function(e){
+  if(e.target.id==='gselq' && e.key==='Enter' && !e.isComposing){ e.preventDefault(); e.target.blur(); }
+});
 gmgrBtn.addEventListener('click', openGroupManager);
 gbulkBtn.addEventListener('click', openBulk);
 menuBtn.addEventListener('click', openMenu);
