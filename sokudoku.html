@@ -75,7 +75,7 @@ select.chip{padding:7px 10px; max-width:150px; -webkit-appearance:none; text-ali
 .searching .gspath{display:inline}
 .statusline{display:flex; align-items:center; gap:8px; margin-top:7px; font-size:12px; color:var(--muted)}
 .statusline b{color:var(--text)}
-main{flex:1; overflow-y:auto;
+main{flex:1; overflow-y:auto; overflow-anchor:none;
   padding:8px 10px calc(24px + env(safe-area-inset-bottom));
   padding-left:calc(10px + env(safe-area-inset-left)); padding-right:calc(10px + env(safe-area-inset-right))}
 .card{background:var(--panel); border:1px solid var(--border); border-radius:10px;
@@ -964,14 +964,119 @@ function computeFiltered(){
   }
   countEl.innerHTML='<b>'+filtered.length+'</b> / '+total+' 件';
 }
-/* 画面のいちばん上に見えているカード（位置を保つ・復元する基準） */
-function firstVisible(){
-  var mt=mainEl.getBoundingClientRect().top, cs=listEl.children, lo=0, hi=cs.length-1, ans=-1;
-  while(lo<=hi){ var mid=(lo+hi)>>1;
-    if(cs[mid].getBoundingClientRect().bottom>mt+1){ ans=mid; hi=mid-1; } else lo=mid+1; }
-  if(ans<0) return null;
-  return {id:cs[ans].getAttribute('data-id'), off:cs[ans].getBoundingClientRect().top-mt};
+function viewItems(){ return listEl; }
+function viewIds(){ return filtered.map(function(r){return String(r.id);}); }
+/* PC・iPhone共通：条件ごとの読書位置。学習記録とは独立して保存する。 */
+var viewTimer=null, activeView=null, activeViewKey=null;
+var viewBook=(function(){
+  try{
+    var b=JSON.parse(lsGet('viewPositions','null'));
+    if(b && b.v===1 && b.positions && typeof b.positions==='object') return b;
+  }catch(e){}
+  return {v:1, last:null, positions:{}};
+})();
+function viewControls(){
+  return {q:qEl.value, f:filter, m:markOnly?1:0, g:gFilter, s:sortMode, a:andMode?1:0};
 }
+function viewKey(v){ return JSON.stringify([v.q.trim(),v.f,v.m,v.g,v.s,v.a]); }
+function viewRows(){ return viewItems().children; }
+function viewTop(){
+  var top=mainEl.getBoundingClientRect().top;
+  var head=mainEl.querySelector('thead');
+  return top+(head ? head.getBoundingClientRect().height : 0);
+}
+function firstVisible(){
+  var top=viewTop(), rows=viewRows(), lo=0, hi=rows.length-1, found=-1;
+  while(lo<=hi){
+    var mid=(lo+hi)>>1;
+    if(rows[mid].getBoundingClientRect().bottom>top+1){ found=mid; hi=mid-1; }
+    else lo=mid+1;
+  }
+  if(found<0) return null;
+  return {id:rows[found].getAttribute('data-id'), off:rows[found].getBoundingClientRect().top-top};
+}
+function viewPosition(){
+  var a=firstVisible();
+  return {id:a?a.id:null, off:a?a.off:0, top:mainEl.scrollTop};
+}
+function rememberView(){
+  if(!activeViewKey || !DATA.length) return;
+  var p=viewPosition(); p.at=Date.now();
+  viewBook.positions[activeViewKey]=p;
+  viewBook.last=Object.assign({},activeView,p);
+}
+function saveView(){
+  clearTimeout(viewTimer);
+  if(!activeViewKey || !DATA.length) return;
+  rememberView();
+  // 長年の検索履歴で保存領域を使い切らないよう、最近の200条件を保持する。
+  var keys=Object.keys(viewBook.positions);
+  if(keys.length>200){
+    keys.sort(function(a,b){return (viewBook.positions[b].at||0)-(viewBook.positions[a].at||0);});
+    keys.slice(200).forEach(function(k){if(k!==activeViewKey) delete viewBook.positions[k];});
+  }
+  try{
+    localStorage.setItem(NS+'.viewPositions',JSON.stringify(viewBook));
+    localStorage.setItem(NS+'.view',JSON.stringify(viewBook.last));
+  }catch(e){}
+}
+function scheduleSaveView(){ clearTimeout(viewTimer); viewTimer=setTimeout(saveView,150); }
+function viewBegin(opts){
+  var previous=viewPosition(), ids=viewIds();
+  rememberView();
+  var state=viewControls(), key=viewKey(state), saved=viewBook.positions[key];
+  // 同じ条件の再描画は現在位置を保ち、条件を戻したときはその条件の保存位置を使う。
+  var target=opts.anchor || (key!==activeViewKey && saved ? saved : previous);
+  if(opts.anchor && opts.top!=null) target=Object.assign({},target,{top:opts.top});
+  return {state:state,key:key,target:target,previous:previous,ids:ids};
+}
+function viewResolve(plan, ids){
+  var target=plan.target||{}, index=-1;
+  if(target.id!=null) index=ids.indexOf(String(target.id));
+  // 絞り込みで対象が消えた場合は、それまでの一覧で近くにいた項目を選ぶ。
+  if(index<0 && plan.previous.id!=null && plan.ids.length){
+    var previousIndex=plan.ids.indexOf(String(plan.previous.id));
+    var available={}; ids.forEach(function(id,i){ available[id]=i; });
+    for(var d=0;previousIndex>=0 && d<plan.ids.length;d++){
+      var next=plan.ids[previousIndex+d], prev=plan.ids[previousIndex-d];
+      if(next!==undefined && Object.prototype.hasOwnProperty.call(available,next)){index=available[next];break;}
+      if(prev!==undefined && Object.prototype.hasOwnProperty.call(available,prev)){index=available[prev];break;}
+    }
+  }
+  return {index:index,off:Number(target.off)||0,top:Math.max(0,Number(target.top)||0)};
+}
+function viewFinish(plan, position){
+  if(position.index>=0){
+    var row=viewRows()[position.index];
+    mainEl.scrollTop+=(row.getBoundingClientRect().top-viewTop())-position.off;
+  }else mainEl.scrollTop=position.top;
+  activeView=plan.state; activeViewKey=plan.key;
+  // 条件変更直後に閉じても復元できるよう、スクロールの停止を待たず保存する。
+  saveView();
+}
+function loadView(){
+  var v=viewBook.last;
+  if(!v){ try{ v=JSON.parse(lsGet('view','null')); }catch(e){} }
+  if(!v || typeof v!=='object') return null;
+  qEl.value=typeof v.q==='string'?v.q:'';
+  var chips=document.querySelectorAll('[data-f]'), chosen=null;
+  chips.forEach(function(b){ if(b.getAttribute('data-f')===v.f) chosen=b; });
+  if(chosen){ chips.forEach(function(b){b.classList.remove('active');});chosen.classList.add('active');filter=v.f; }
+  markOnly=!!v.m; markBtn.classList.toggle('active',markOnly);
+  gFilter=typeof v.g==='string'?v.g:'';
+  if(v.s && Array.prototype.some.call(sortSel.options,function(o){return o.value===v.s;})){
+    sortMode=v.s;sortSel.value=sortMode;
+  }
+  if(v.a!==undefined) andMode=!!v.a;
+  andBtn.textContent='順不同 '+(andMode?'ON':'OFF');andBtn.classList.toggle('active',andMode);
+  return v;
+}
+// iOSでは終了イベントが省略されることがあるため、スクロール中にも保存する。
+mainEl.addEventListener('scroll',scheduleSaveView,{passive:true});
+window.addEventListener('pagehide',saveView);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden') saveView();});
+if('scrollRestoration' in history) history.scrollRestoration='manual';
+
 function renderTo(n){
   n=Math.min(n, filtered.length);
   if(rendered>=n) return;
@@ -981,32 +1086,22 @@ function renderTo(n){
   rendered=n;
 }
 function more(){ renderTo(rendered+CHUNK); }
-/* render()          … 検索・絞り込み・並び替えを変えたとき（先頭から表示）
-   render({keep})    … いま見ている位置を保ったまま描き直す
-   render({anchor})  … 指定のカードが同じ位置に来るように描く（起動時の復元） */
+/* 条件ごとの位置を復元。未訪問の条件では現在の項目（なければ近い項目）を追う。 */
 function render(opts){
   opts=(opts && typeof opts==='object' && !opts.type) ? opts : {};
-  var prevRendered=rendered, prevTop=mainEl.scrollTop;
-  var anchor=opts.anchor || (opts.keep ? firstVisible() : null);
+  var prevRendered=rendered, viewPlan=viewBegin(opts);
   computeFiltered();
   listEl.innerHTML=''; rendered=0;
   emptyEl.style.display=filtered.length?'none':'block';
   if(!filtered.length && DATA.length) emptyEl.innerHTML = (filter==='自作' && !custom.length)
     ? '自作の'+(IS_SOKU?'熟語':'単語')+'はまだありません。<br><br>右上の <b>⋯</b> →<br><b>「'+(IS_SOKU?'熟語':'単語')+'を追加」</b>から追加できます。'
     : '該当する項目がありません';
-  var need=CHUNK, aIdx=-1;
+  var position=viewResolve(viewPlan,viewIds()), need=CHUNK;
   if(opts.keep) need=Math.max(need, prevRendered);
-  if(anchor && anchor.id!=null){
-    for(var i=0;i<filtered.length;i++) if(String(filtered[i].id)===String(anchor.id)){ aIdx=i; break; }
-    if(aIdx>=0) need=Math.max(need, aIdx+CHUNK);
-  }
+  if(position.index>=0) need=Math.max(need,position.index+CHUNK);
+  else if(position.top>0) need=filtered.length;
   renderTo(need);
-  if(aIdx>=0){
-    var el=listEl.children[aIdx];
-    mainEl.scrollTop += (el.getBoundingClientRect().top - mainEl.getBoundingClientRect().top) - (anchor.off||0);
-  } else if(opts.keep){ mainEl.scrollTop=prevTop; }
-  else { mainEl.scrollTop=0; }
-  scheduleSaveView();
+  viewFinish(viewPlan,position);
 }
 /* 1枚だけ描き直す（一覧は作り直さないのでスクロール位置が動かない） */
 function updateCard(id){
@@ -1017,18 +1112,9 @@ function updateCard(id){
   if(tmp.firstChild) el.parentNode.replaceChild(tmp.firstChild, el);
 }
 
-/* ---- 前回の続きから開く（アプリをタブから消しても） ---- */
-var viewTimer=null;
-function saveView(){
-  if(!DATA.length) return;
-  var a=firstVisible();
-  try{ localStorage.setItem(NS+'.view', JSON.stringify({q:qEl.value, f:filter, m:markOnly?1:0, g:gFilter,
-    id:a?a.id:null, off:a?Math.round(a.off):0})); }catch(e){}
-}
-function scheduleSaveView(){ clearTimeout(viewTimer); viewTimer=setTimeout(saveView, 250); }
+/* スクロール位置の保存は共通部品。ここではカードの追加読み込みだけを行う。 */
 mainEl.addEventListener('scroll', function(){
   if(mainEl.scrollTop+mainEl.clientHeight > mainEl.scrollHeight-600) more();
-  scheduleSaveView();
 }, {passive:true});
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState==='hidden'){ flushEdit(); saveView(); } });
@@ -1765,22 +1851,14 @@ function updateSub(){
   themeBtn.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀':'🌙';
   var raw=lsGet('dataset','');
   if(raw){ try{ var ds=JSON.parse(raw); dsMeta=ds; prep(ds.rows||[]); }catch(e){} }
-  var view=null; try{ view=JSON.parse(lsGet('view','null')); }catch(e){ view=null; }
-  if(view){
-    qEl.value=view.q||'';
-    if(view.f){ var chip=document.querySelector('.chips [data-f="'+view.f+'"]');
-      if(chip){ var act=document.querySelector('.chips [data-f].active'); if(act) act.classList.remove('active');
-        chip.classList.add('active'); filter=view.f; } }
-    markOnly=!!view.m; markBtn.classList.toggle('active',markOnly);
-    gFilter=view.g||'';
-  }
+  var view=loadView();
   refreshGroupSel(); updateSub();
   if(!DATA.length){
     emptyEl.innerHTML='まだ単語データがありません。<br><br>右上の <b>⋯</b> から<br><b>「単語データを取り込む」</b>を選んでください。';
     emptyEl.style.display='block';
     countEl.textContent='';
     setTimeout(openImport, 400);
-  } else render(view && view.id!=null ? {anchor:{id:view.id, off:view.off||0}} : null);
+  } else render(view ? {anchor:view,top:view.top} : null);
 })();
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
